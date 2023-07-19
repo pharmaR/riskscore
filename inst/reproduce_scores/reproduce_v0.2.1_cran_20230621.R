@@ -19,7 +19,7 @@ library(riskmetric)
 
 
 assessed <- c("dplyr")
-  pkg_ref(source = "pkg_cran_remote", repos = c("https://cran.rstudio.com")) %>%
+pkg_ref(source = "pkg_cran_remote", repos = c("https://cran.rstudio.com")) %>%
   as_tibble() %>%
   pkg_assess()
 
@@ -52,12 +52,4 @@ v0.2.1_cran_20230621 <- scored_cran %>%
   mutate(rank_score = row_number())  %>%
   select(-pkg_ref, package, version, risk_date, risk_version, pkg_score, rank_score, everything())
 
-# # A different version of this file was shared for later use, that needs some cleanup
-v0.2.1_cran_20230621 <- readRDS("data-raw/initial_v0.2.1_cran_20230621.rds") %>%
-  select(-c(rank_dwnlds, downloads, start_date)) %>%
-  mutate(risk_version = "0.2.1") %>%
-  select(package, version, risk_date = end_date, risk_version, pkg_score, rank_score, everything())
 
-# output as csv and rda
-write.csv(v0.2.1_cran_20230621, "inst/output_files/v0.2.1_cran_20230621.csv")
-usethis::use_data(v0.2.1_cran_20230621, overwrite = TRUE)

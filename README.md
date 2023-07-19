@@ -12,7 +12,7 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 
 A data package for cataloging
 [`riskmetric`](https://github.com/pharmaR/riskmetric) results across public
-repositories.
+repositories. `WARNING`: Right now, the `riskscore` is in a PoC stage that is not fully operational. 
 
 ### Installation
 
@@ -27,9 +27,59 @@ remotes::install_github("pharmaR/riskscore")
 
 ### Purpose
 
+There are several different use cases that make the concept of `riskscore` 
+valuable, including (but not limited to) the following:
+
+- Guide more effective discussion around how to summarize risk
+- Helps communicate changes to `riskmetric`'s summarizing algorithm or interpretations of assessment data
+- Aids the `riskmetric` dev team in identifying "edge cases" for analysis and code refinement.
+- Provides a channel to distribute handy tools for building `riskmetric` result data (ie, mimicking how our process for external packages could serve as a useful template for when comparing to internal or private repos).
+- Allows everyone to report `riskscores` scores in terms of "CRAN percentile" instead of just some arbitrary numeric value.
+- Establishes a central repository for package scores, which can be used for many applications, like generating badge scores or trending in a package's score over time to measure performance.
 
 
-### `{riskmetric}`’s Approach to Validation <a
+### Usage
+
+Right now, the `riskscore` is in a PoC stage that is not fully operational. 
+Soon, we'll begin to introduce more functionality to the package. However, in
+the meantime, you can access and play with an initial data.frame containing
+`riskmetric` scores for all of CRAN. After you've installed `riskscore` from
+Github following the instruction above, you can run the following code to
+interact with our initial (placeholder) data.frame:
+
+```r
+library(riskscore)
+data(v0.2.1_cran_20230621)
+```
+
+This data.frame contains 19,715 observations (one row per package) and 24 
+variables, 18 of which are `riskmetric` assessments. To date, the first 6
+columns contain package, version, risk_date, risk_version, pkg_score, and 
+rank_score. In the future, these columns may change.
+
+Note: to observe how this data.frame was prepared, you can run the following
+code to retrieve an R script used to reproduce the results:
+
+```r
+file.edit(system.file("reproduce_scores/reproduce_v0.2.1_cran_20230621.R", package = "riskscore"))
+```
+
+But, in general, the results will be prepared using a 
+`pkg_ref(. source = "pkg_cran_remote", repos = c("https://cran.rstudio.com"))`. 
+Any assessment / metric that doesn't return a value for this remote source, will
+return an `NA` value, which will not hurt the package's score. More on scoring
+is available in the `riskmetric` documentation available [here](https://pharmar.github.io/riskmetric/articles/riskmetric.html#score-our-metrics).
+
+If you are just interested in browsing a CSV of the packages and their risk
+scores, you could also run:
+
+```r
+file.edit(system.file("output_files/v0.2.1_cran_20230621.csv", package = "riskscore"))
+```
+
+<br>
+
+### {riskmetric}’s Approach to Validation <a
 href='https://pharmar.github.io/riskmetric/'><img
 src="man/figures/hex-riskmetric-aspconfig.png" align="right" height="172"
 style="float:right; height:172px;"/></a>
@@ -53,3 +103,9 @@ will) require deeper inspection by the reviewing party.
 were made possible thanks to the [R Validation
 Hub](https://www.pharmar.org/about/), a collaboration to support the adoption of
 R within a biopharmaceutical regulatory setting.
+
+<br>
+
+<br>
+
+<br>

@@ -5,7 +5,7 @@
 \alias{v0.2.1_cran_20230621}
 \title{Initial Placeholder Data}
 \format{
-An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 19715 rows and 23 columns.
+An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 19715 rows and 24 columns.
 }
 \usage{
 v0.2.1_cran_20230621
@@ -14,9 +14,10 @@ v0.2.1_cran_20230621
 A data.frame
 }
 \description{
-The initial data.frame generated as a placeholder until a more streamlined
+The initial data.frame is generated as a placeholder until a more streamlined
 process is implemented. It contains the initial run where all of CRAN was
 scored using riskmetric v0.2.1 on 2023-06-21. It contains 19,715 observations
-and 23 variables, 18 of which are riskmetric assessments.
+(one row per package) and 24 variables, 18 of which are riskmetric
+assessments.
 }
 \keyword{datasets}
