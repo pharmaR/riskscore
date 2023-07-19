@@ -15,9 +15,12 @@ usethis::use_mit_license("R Validation Hub")
 # usethis::use_package("[pkg name]") # not run yet
 
 # Add data-raw folder to generate exported data objects
-usethis::use_data_raw(name = "", open = FALSE )
+usethis::use_data_raw(name = "placeholder", open = FALSE )
 
+# Tests
+usethis::use_testthat()
+usethis::use_test("spelling")
 
 # Documentation
 ## Vignettes
-usethis::use_vignette("riskscore")
+usethis::use_vignette("riskscore") # getting started
