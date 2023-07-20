@@ -49,3 +49,6 @@ po/*~
 rsconnect/
 .Rproj.user
 inst/doc
+
+# bootstrapping files to design pkg
+^dev$
