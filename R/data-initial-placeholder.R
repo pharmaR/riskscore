@@ -6,7 +6,7 @@
 #' scored using riskmetric v0.2.1 on 2023-06-21.
 #'
 #' @format A `data.frame` containing 19,715 observations
-#'   (one row per package) and 24 variables, 18 of which are riskmetric
+#'   (one row per package) and 23 variables, 18 of which are riskmetric
 #'   assessments.
 #'
 #'

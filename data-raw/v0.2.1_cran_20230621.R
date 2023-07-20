@@ -46,17 +46,16 @@ end <- Sys.time()
 end - st # Note: this took a well equipped laptop about 10 hours
 
 v0.2.1_cran_20230621 <- scored_cran %>%
-  mutate(risk_date = date_avail,
-         risk_version = "0.2.1") %>%
-  arrange(pkg_score) %>%
-  mutate(rank_score = row_number())  %>%
-  select(-pkg_ref, package, version, risk_date, risk_version, pkg_score, rank_score, everything())
+  mutate(riskmetric_run_date = date_avail,
+         riskmetric_version = "0.2.1") %>%
+  arrange(package) %>%
+  select(-pkg_ref, package, version, riskmetric_run_date, riskmetric_version, pkg_score, everything())
 
 # # A different version of this file was shared for later use, that needs some cleanup
-# v0.2.1_cran_20230621 <- readRDS("data-raw/initial_v0.2.1_cran_20230621.rds") %>%
-#   select(-c(rank_dwnlds, downloads, start_date)) %>%
-#   mutate(risk_version = "0.2.1") %>%
-#   select(package, version, risk_date = end_date, risk_version, pkg_score, rank_score, everything())
+v0.2.1_cran_20230621 <- readRDS("data-raw/initial_v0.2.1_cran_20230621.rds") %>%
+  select(-c(rank_dwnlds, downloads, rank_score, start_date)) %>%
+  mutate(riskmetric_version = "0.2.1") %>%
+  select(package, version, riskmetric_run_date = end_date, riskmetric_version, pkg_score, everything())
 
 # output as rda
 usethis::use_data(v0.2.1_cran_20230621, overwrite = TRUE)
