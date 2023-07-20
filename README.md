@@ -70,19 +70,10 @@ Any assessment / metric that doesn't return a value for this remote source, will
 return an `NA` value, which will not hurt the package's score. More on scoring
 is available in the `riskmetric` documentation available [here](https://pharmar.github.io/riskmetric/articles/riskmetric.html#score-our-metrics).
 
-If you are just interested in browsing a CSV of the packages and their risk
-scores, you could also run:
-
-```r
-file.edit(system.file("output_files/v0.2.1_cran_20230621.csv", package = "riskscore"))
-```
 
 <br>
 
-### {riskmetric}’s Approach to Validation <a
-href='https://pharmar.github.io/riskmetric/'><img
-src="man/figures/hex-riskmetric-aspconfig.png" align="right" height="172"
-style="float:right; height:172px;"/></a>
+### {riskmetric}’s Approach to Validation <a href='https://pharmar.github.io/riskmetric/'><img src="man/figures/hex-riskmetric-aspconfig.png" align="right" height="172" style="float:right; height:172px;"/></a>
 
 [`riskmetric`](https://github.com/pharmaR/riskmetric) is a framework to quantify
 an R package’s “risk of use” by assessing a number of meaningful metrics
