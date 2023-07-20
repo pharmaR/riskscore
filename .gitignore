@@ -51,4 +51,4 @@ rsconnect/
 inst/doc
 
 # bootstrapping files to design pkg
-^dev$
+dev/
