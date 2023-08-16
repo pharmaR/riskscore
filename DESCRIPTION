@@ -2,7 +2,7 @@ Package: riskscore
 Title: A Catalog for `riskmetric` Results Across Public Repositories
 Version: 0.0.0.9000
 Authors@R: c( 
-    person("Aaron", "Clark", , "clark.aaronchris@gmail.com", role = c("aut"),
+    person("Aaron", "Clark", , "clark.aaronchris@gmail.com", role = c("cre", "aut"),
            comment = c(ORCID = "0000-0002-0123-0970")),
     person(family = "R Validation Hub", role = c("cph", "fnd"))
   )
