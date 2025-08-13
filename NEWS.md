@@ -1,4 +1,4 @@
-# riskscore (development version)
+# riskscore 0.0.1
 
 * Revamped process to 
 
