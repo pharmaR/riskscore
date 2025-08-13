@@ -18,7 +18,7 @@ library(riskmetric)
 # packageVersion("riskmetric") # > [1] ‘0.2.1’
 
 
-assessed <- c("dplyr")
+assessed <- c("dplyr") %>%
   pkg_ref(source = "pkg_cran_remote", repos = c("https://cran.rstudio.com")) %>%
   as_tibble() %>%
   pkg_assess()
