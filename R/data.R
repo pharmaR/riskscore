@@ -20,7 +20,6 @@
 #'   the time of execution. Please refer to riskmetric's documentation for more
 #'   info.
 #'
-#' @export
 #' @return A data.frame
 "cran_scored_20230621"
 
@@ -43,7 +42,6 @@
 #'   the time of execution. Please refer to riskmetric's documentation for more
 #'   info.
 #'
-#' @export
 #' @return A data.frame
 "cran_scored_20250812"
 
@@ -65,6 +63,5 @@
 #'   the time of execution. Please refer to riskmetric's documentation for more
 #'   info.
 #'
-#' @export
 #' @return A data.frame
 "cran_assessed_20250812"
