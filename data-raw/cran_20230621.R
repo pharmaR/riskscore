@@ -52,10 +52,11 @@ v0.2.1_cran_20230621 <- scored_cran %>%
   select(-pkg_ref, package, version, riskmetric_run_date, riskmetric_version, pkg_score, everything())
 
 # # A different version of this file was shared for later use, that needs some cleanup
-v0.2.1_cran_20230621 <- readRDS("data-raw/initial_v0.2.1_cran_20230621.rds") %>%
+cran_scored_20230621 <- readRDS("data-raw/initial_v0.2.1_cran_20230621.rds") %>%
   select(-c(rank_dwnlds, downloads, rank_score, start_date)) %>%
   mutate(riskmetric_version = "0.2.1") %>%
   select(package, version, riskmetric_run_date = end_date, riskmetric_version, pkg_score, everything())
 
 # output as rda
-usethis::use_data(v0.2.1_cran_20230621, overwrite = TRUE)
+# cran_scored_20230621 <- v0.2.1_cran_20230621
+usethis::use_data(cran_scored_20230621, overwrite = TRUE)

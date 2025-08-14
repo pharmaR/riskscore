@@ -22,12 +22,12 @@
 #'
 #' @export
 #' @return A data.frame
-"v0.2.1_cran_20230621"
+"cran_scored_20230621"
 
 
 #' CRAN riskmetric Scores on 2025-08-12
 #'
-#' A data.frame containing all of CRAN was scored using riskmetric v0.2.1 on
+#' A data.frame containing all of CRAN was scored using riskmetric v0.2.5 on
 #' 2025-08-12 & R v4.5.1.
 #'
 #' @format A `data.frame`
@@ -50,7 +50,7 @@
 
 #' CRAN riskmetric Assessments on 2025-08-12
 #'
-#' A data.frame containing all of CRAN was assessed using riskmetric v0.2.1 on
+#' A data.frame containing all of CRAN was assessed using riskmetric v0.2.5 on
 #' 2025-08-12 & R v4.5.1.
 #'
 #' @format A `data.frame`

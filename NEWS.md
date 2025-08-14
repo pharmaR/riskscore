@@ -1,6 +1,6 @@
 # riskscore 0.0.1
 
-* Revamped process to 
+* Revamped process to store assessments (in addition to scores) in a tibble.
 
 # riskscore 0.0.0.9000
 

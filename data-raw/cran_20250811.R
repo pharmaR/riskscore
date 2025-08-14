@@ -40,32 +40,36 @@ metric_weights <- ifelse(is.na(metric_scores[,1]), 0, 1)
 # Need this if assessments converted to a tibble?
 # Specifically, the 'with_eval_recording' attribute
 # it did make our assessment object blow up in size
-# assessed_cran <-
-#   lapply(assessed_cran[-(1:3)], \(x) {
-#     out <-
-#       list(
-#         structure(
-#           x[[1]],
-#           .recording = NULL,
-#           class = setdiff(class(x[[1]]), "with_eval_recording")
-#         )
-#       )
-#     attributes(out) <- attributes(x)
-#     out
-#   })
+strip_recording0 <- function(assessment) {
+  lapply(assessment, \(x) {
+    out <-
+      list(
+        structure(
+          x[[1]],
+          .recording = NULL,
+          class = setdiff(class(x[[1]]), "with_eval_recording")
+        )
+      )
+    attributes(out) <- attributes(x)
+    out
+  })
+}
 
 
 incrmt_cran <- function(pkg_names, label) {
   cat("\n\nKicking off batch", label,"\n")
+  # pkg_names <- c("dplyr") # for testing / debugging
+  # label <- "'TEST'"
   incrmt_ct <- length(pkg_names)
   cat("\n-->", incrmt_ct, "package(s) to process for batch", label,"\n")
   st <- Sys.time()
   assessed_cran <-
-    # "dplyr" %>%
     pkg_names %>%
     riskmetric::pkg_ref(source = "pkg_cran_remote", repos = c("https://cran.rstudio.com")) %>%
     dplyr::as_tibble() %>%
-    riskmetric::pkg_assess()
+    riskmetric::pkg_assess() %>%
+    strip_recording()
+
   cat("\n--> batch", label,"Assessed.\n")
   scored_cran <- assessed_cran %>%
     riskmetric::pkg_score(weights = metric_weights)
@@ -127,3 +131,81 @@ cran_scored_20250812 <- purrr::map(labs, ~
 # output as rda
 usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
 usethis::use_data(cran_scored_20250812, overwrite = TRUE)
+
+
+# test some things
+# First, compare size to old run
+
+data("cran_scored_20230621")
+object.size(cran_scored_20230621) / 1000000 # 5 MB
+
+data("cran_scored_20250812")
+object.size(cran_scored_20250812) / 1000000 # 20 MB
+
+nrow(cran_scored_20250812) - nrow(cran_scored_20230621) # 2,782 more pkgs
+
+# Need this if assessments converted to a tibble?
+# Specifically, the 'with_eval_recording' attribute
+# it did make our assessment object blow up in size
+
+# attributes(cran_assessed_20250812$remote_checks[1])
+# attr(cran_assessed_20250812$remote_checks[1], "with_eval_recording")
+
+data("cran_assessed_20250812")
+object.size(cran_assessed_20250812) / 1000000000 # 1.5 GB
+
+# Let's strip that junk out
+# strip_recording <- function(x) {
+#   out <-
+#     list(
+#       structure(
+#         x[[1]],
+#         .recording = NULL,
+#         class = setdiff(class(x[[1]]), "with_eval_recording")
+#       )
+#     )
+#   attributes(out) <- attributes(x)
+#   out
+# }
+strip_recording <- function(assessment) {
+  lapply(assessment, \(x) {
+    sapply(x, function(y) {
+      out <-
+        list(
+          structure(
+            y[[1]],
+            .recording = NULL,
+            class = setdiff(class(y[[1]]), "with_eval_recording")
+          )
+        )
+      attributes(out) <- attributes(y)
+      out
+    })
+  })
+}
+
+
+# Let's strip that junk out
+assessed_cran <- cran_assessed_20250812
+cran_assessed_20250812 <- assessed_cran %>%
+  dplyr::select(-c(package, version, pkg_ref,
+                   R_version, riskmetric_run_date, riskmetric_version)) %>%
+  # purrr::modify(., strip_recording) %>%
+  dplyr::mutate(dplyr::across(dplyr::everything(), ~ strip_recording(.x))) %>%
+  strip_recording()
+
+  # dplyr::as_tibble() %>%
+  # dplyr::mutat
+  # dplyr::mutate(
+  #   R_version = getRversion(),
+  #   riskmetric_run_date = date_avail,
+  #   riskmetric_version = packageVersion("riskmetric")
+  # )
+
+  # apply a function called fun() to every cell in a data.frame mtcars
+
+
+
+  # copilot, help me apply strip_recording() across all columns of assessed_cran
+
+

@@ -53,4 +53,4 @@ inst/doc
 # bootstrapping files to design pkg
 dev/
 
-data-raw/cran_20250812/*
+data-raw/cran20250812/*

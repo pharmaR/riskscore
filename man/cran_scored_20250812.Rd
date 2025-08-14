@@ -25,7 +25,7 @@ cran_scored_20250812
 A data.frame
 }
 \description{
-A data.frame containing all of CRAN was scored using riskmetric v0.2.1 on
+A data.frame containing all of CRAN was scored using riskmetric v0.2.5 on
 2025-08-12 & R v4.5.1.
 }
 \keyword{datasets}
