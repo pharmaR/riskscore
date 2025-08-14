@@ -167,31 +167,61 @@ object.size(cran_assessed_20250812) / 1000000000 # 1.5 GB
 #   attributes(out) <- attributes(x)
 #   out
 # }
+
+# metric_value <- case_when(
+#   "pkg_metric_error" %in% class(riskmetric_assess[[metric$name]][[1]]) ~ "pkg_metric_error",
+#   metric$name == "dependencies" ~ as.character(NROW(riskmetric_assess[[metric$name]][[1]])),
+#   metric$name == "reverse_dependencies" ~ as.character(length(as.vector(riskmetric_assess[[metric$name]][[1]]))),
+#   metric$is_perc == 1L ~ as.character(round(riskmetric_score[[metric$name]]*100, 2)[[1]]),
+#   TRUE ~ as.character(riskmetric_assess[[metric$name]][[1]][1:length(riskmetric_assess[[metric$name]])])
+# )
+
 strip_recording <- function(assessment) {
-  lapply(assessment, \(x) {
-    sapply(x, function(y) {
+  assessment <- assessed_cran |>
+    dplyr::select(-c(package, version, pkg_ref,
+           R_version, riskmetric_run_date, riskmetric_version)) |>
+    dplyr::mutate(dplyr::across(
+      dplyr::everything(), ~
+        if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]]
+        # if(stringr::str_detect(.x[[1]], "pkg_metric_error")) "pkg_metric_error" else .x[[1]]
+      )
+    )
+
+  these_cols <- colnames(assessment)
+  lapply(these_cols, \(col_name) {
+    cat("\n\nNew x =", col_name, "\n")
+    col_vector <- assessment[[col_name]]
+    col_len <- length(col_vector)
+    lapply(1:col_len, function(i) {
+      val <- col_vector[i]
+      # cat("num =", i, ", val =", val[[1]],"\n")
       out <-
         list(
           structure(
-            y[[1]],
+            val[[1]],
             .recording = NULL,
-            class = setdiff(class(y[[1]]), "with_eval_recording")
+            class = setdiff(class(val[[1]]), "with_eval_recording")
           )
         )
-      attributes(out) <- attributes(y)
+      attributes(out) <- attributes(val)
       out
-    })
+    }) #|> unlist(use.names = FALSE)
   })
 }
 
 
 # Let's strip that junk out
 assessed_cran <- cran_assessed_20250812
+
+assessed_cran$has_news[589]
+assessed_cran$has_news[590] # error
+
 cran_assessed_20250812 <- assessed_cran %>%
   dplyr::select(-c(package, version, pkg_ref,
                    R_version, riskmetric_run_date, riskmetric_version)) %>%
+  dplyr::mutate(dplyr::across(dplyr::everything(), ~
+      "pkg_metric_error" %in% class(.x[[1]]) ~ "pkg_metric_error")) %>%
   # purrr::modify(., strip_recording) %>%
-  dplyr::mutate(dplyr::across(dplyr::everything(), ~ strip_recording(.x))) %>%
   strip_recording()
 
   # dplyr::as_tibble() %>%
