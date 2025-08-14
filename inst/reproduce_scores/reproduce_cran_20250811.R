@@ -1,5 +1,5 @@
 #############
-## code to prepare `v0.2.5_cran_20250811` dataset
+## code to prepare `v0.2.5_cran_20250812` dataset
 
 # If needed
 # utils::install.packages(c("riskmetric", "dplyr", "cranlogs")
@@ -48,16 +48,16 @@ end <- Sys.time()
 end - st # Note: this took a well equipped laptop about 10 hours
 
 
-v0.2.5_cran_assessed_20250811 <- assessed_cran %>%
+v0.2.5_cran_assessed_20250812 <- assessed_cran %>%
   mutate(
     R_version = getRversion(),
     riskmetric_run_date = date_avail,
     riskmetric_version = packageVersion("riskmetric")
   ) %>%
   select(-pkg_ref, package, version, everything())
-saveRDS(v0.2.5_cran_assessed_20250811, "v0.2.5_cran_assessed_20250811.rds")
+saveRDS(v0.2.5_cran_assessed_20250812, "v0.2.5_cran_assessed_20250812.rds")
 
-v0.2.5_cran_scored_20250811 <- scored_cran %>%
+v0.2.5_cran_scored_20250812 <- scored_cran %>%
   mutate(
     R_version = getRversion(),
     riskmetric_run_date = date_avail,
@@ -65,6 +65,6 @@ v0.2.5_cran_scored_20250811 <- scored_cran %>%
     ) %>%
   arrange(pkg_score) %>%
   select(-pkg_ref, package, version, pkg_score, everything())
-saveRDS(v0.2.5_cran_scored_20250811, "v0.2.5_cran_scored_20250811.rds")
+saveRDS(v0.2.5_cran_scored_20250812, "v0.2.5_cran_scored_20250812.rds")
 
 

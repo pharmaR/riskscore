@@ -49,7 +49,7 @@ interact with our initial (placeholder) data.frame:
 
 ```r
 library(riskscore)
-data(cran_scored_20250811)
+data(cran_scored_20250812)
 ```
 
 This data.frame contains 19,715 observations (one row per package) and 24 
@@ -61,7 +61,7 @@ Note: to observe how this data.frame was prepared, you can run the following
 code to retrieve an R script used to reproduce the results:
 
 ```r
-file.edit(system.file("reproduce_scores/reproduce_cran_20250811.R", package = "riskscore"))
+file.edit(system.file("reproduce_scores/reproduce_cran_20250812.R", package = "riskscore"))
 ```
 
 But, in general, the results will be prepared using a 
