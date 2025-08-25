@@ -129,8 +129,10 @@ cran_scored_20250812 <- purrr::map(labs, ~
   purrr::reduce(dplyr::bind_rows)
 
 # output as rda
-usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
+# usethis::use_data(cran_assessed_20250812, overwrite = TRUE) # wait on this
 usethis::use_data(cran_scored_20250812, overwrite = TRUE)
+
+
 
 
 # test some things
@@ -144,55 +146,23 @@ object.size(cran_scored_20250812) / 1000000 # 20 MB
 
 nrow(cran_scored_20250812) - nrow(cran_scored_20230621) # 2,782 more pkgs
 
-# Need this if assessments converted to a tibble?
-# Specifically, the 'with_eval_recording' attribute
-# it did make our assessment object blow up in size
 
-# attributes(cran_assessed_20250812$remote_checks[1])
-# attr(cran_assessed_20250812$remote_checks[1], "with_eval_recording")
-
+# Check size of assessments tibble
 data("cran_assessed_20250812")
-object.size(cran_assessed_20250812) / 1000000000 # 1.5 GB
+object.size(cran_assessed_20250812) / 1000000000 # 1.5 GB - TOO BIG!
 
-# Let's strip that junk out
-# strip_recording <- function(x) {
-#   out <-
-#     list(
-#       structure(
-#         x[[1]],
-#         .recording = NULL,
-#         class = setdiff(class(x[[1]]), "with_eval_recording")
-#       )
-#     )
-#   attributes(out) <- attributes(x)
-#   out
-# }
 
-# metric_value <- case_when(
-#   "pkg_metric_error" %in% class(riskmetric_assess[[metric$name]][[1]]) ~ "pkg_metric_error",
-#   metric$name == "dependencies" ~ as.character(NROW(riskmetric_assess[[metric$name]][[1]])),
-#   metric$name == "reverse_dependencies" ~ as.character(length(as.vector(riskmetric_assess[[metric$name]][[1]]))),
-#   metric$is_perc == 1L ~ as.character(round(riskmetric_score[[metric$name]]*100, 2)[[1]]),
-#   TRUE ~ as.character(riskmetric_assess[[metric$name]][[1]][1:length(riskmetric_assess[[metric$name]])])
-# )
+# Now, strip out the, the .recording / 'with_eval_recording' attribute
+# since it made our assessment object blow up in size
 
 strip_recording <- function(assessment) {
-  assessment <- assessed_cran |>
-    dplyr::select(-c(package, version, pkg_ref,
-           R_version, riskmetric_run_date, riskmetric_version)) |>
-    dplyr::mutate(dplyr::across(
-      dplyr::everything(), ~
-        if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]]
-        # if(stringr::str_detect(.x[[1]], "pkg_metric_error")) "pkg_metric_error" else .x[[1]]
-      )
-    )
 
   these_cols <- colnames(assessment)
   lapply(these_cols, \(col_name) {
-    cat("\n\nNew x =", col_name, "\n")
+    cat("\n\nCol Name =", col_name, "\n")
     col_vector <- assessment[[col_name]]
     col_len <- length(col_vector)
-    lapply(1:col_len, function(i) {
+    lite_col_vector <- lapply(1:col_len, function(i) {
       val <- col_vector[i]
       # cat("num =", i, ", val =", val[[1]],"\n")
       out <-
@@ -205,37 +175,38 @@ strip_recording <- function(assessment) {
         )
       attributes(out) <- attributes(val)
       out
-    }) #|> unlist(use.names = FALSE)
+    }) #|> unlist(use.names = FALSE) # need this?
+    assessment[[col_name]] <<- lite_col_vector
   })
+  assessment
 }
 
 
-# Let's strip that junk out
+# Let's strip that junk out .recording & any pkg_errors
 assessed_cran <- cran_assessed_20250812
 
-assessed_cran$has_news[589]
-assessed_cran$has_news[590] # error
+# Oh, there's a pkg_error class'd object too, for 1 pkg: "ape"
+# assessed_cran$has_news[589]
+# assessed_cran$has_news[590] # error
 
-cran_assessed_20250812 <- assessed_cran %>%
+cran_assessed_lite <- assessed_cran |>
   dplyr::select(-c(package, version, pkg_ref,
-                   R_version, riskmetric_run_date, riskmetric_version)) %>%
-  dplyr::mutate(dplyr::across(dplyr::everything(), ~
-      "pkg_metric_error" %in% class(.x[[1]]) ~ "pkg_metric_error")) %>%
-  # purrr::modify(., strip_recording) %>%
+      R_version, riskmetric_run_date, riskmetric_version)) |>
+  dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
   strip_recording()
 
-  # dplyr::as_tibble() %>%
-  # dplyr::mutat
-  # dplyr::mutate(
-  #   R_version = getRversion(),
-  #   riskmetric_run_date = date_avail,
-  #   riskmetric_version = packageVersion("riskmetric")
-  # )
+cran_assessed_20250812 <- assessed_cran |>
+  dplyr::select(c(package, version, pkg_ref,
+                  R_version, riskmetric_run_date, riskmetric_version)) |>
+  bind_cols(cran_assessed_lite) |>
+  dplyr::mutate(
+    R_version = getRversion(),
+    riskmetric_run_date = as.Date("2025-08-12"),
+    riskmetric_version = packageVersion("riskmetric")
+  )
 
-  # apply a function called fun() to every cell in a data.frame mtcars
+object.size(cran_assessed_20250812) / 1000000 # 1.5 GB down to 848 MB
 
-
-
-  # copilot, help me apply strip_recording() across all columns of assessed_cran
-
+# Now store data
+usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
 
