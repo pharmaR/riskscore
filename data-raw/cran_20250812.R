@@ -37,25 +37,40 @@ metric_weights <- ifelse(is.na(metric_scores[,1]), 0, 1)
 ################
 # Assess & Score all of CRAN
 
-# Need this if assessments converted to a tibble?
-# Specifically, the 'with_eval_recording' attribute
-# it did make our assessment object blow up in size
-strip_recording0 <- function(assessment) {
-  lapply(assessment, \(x) {
-    out <-
-      list(
-        structure(
-          x[[1]],
-          .recording = NULL,
-          class = setdiff(class(x[[1]]), "with_eval_recording")
+#
+# ---- Strip function ----
+#
+
+# Used to strip out the the .recording / 'with_eval_recording' attribute
+# since it made our assessment object blow up in size
+strip_recording <- function(assessment) {
+  these_cols <- colnames(assessment)
+  lapply(these_cols, \(col_name) {
+    cat("\n\nCol Name =", col_name, "\n")
+    col_vector <- assessment[[col_name]]
+    col_len <- length(col_vector)
+    lite_col_vector <- lapply(1:col_len, function(i) {
+      val <- col_vector[i]
+      # cat("num =", i, ", val =", val[[1]],"\n")
+      out <-
+        list(
+          structure(
+            val[[1]],
+            .recording = NULL,
+            class = setdiff(class(val[[1]]), "with_eval_recording")
+          )
         )
-      )
-    attributes(out) <- attributes(x)
-    out
+      attributes(out) <- attributes(val)
+      out
+    }) #|> unlist(use.names = FALSE) # need this?
+    assessment[[col_name]] <<- lite_col_vector
   })
+  assessment
 }
 
-
+#
+# ---- Incrementally assess & score cran ----
+#
 incrmt_cran <- function(pkg_names, label) {
   cat("\n\nKicking off batch", label,"\n")
   # pkg_names <- c("dplyr") # for testing / debugging
@@ -68,7 +83,9 @@ incrmt_cran <- function(pkg_names, label) {
     riskmetric::pkg_ref(source = "pkg_cran_remote", repos = c("https://cran.rstudio.com")) %>%
     dplyr::as_tibble() %>%
     riskmetric::pkg_assess() %>%
-    strip_recording()
+    # remove any 'pkg_metric_errors'
+    dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) %>%
+    strip_recording() # strip .recording attribute
 
   cat("\n--> batch", label,"Assessed.\n")
   scored_cran <- assessed_cran %>%
@@ -80,7 +97,7 @@ incrmt_cran <- function(pkg_names, label) {
   cat("\n-->", capture.output(end - st), ".\n")
 
   #
-  # Prepare the datasets for saving
+  # ---- Prepare the datasets for saving ----
   #
   # Save the assessed and scored datasets
   cran_assessed_20250812 <- assessed_cran %>%
@@ -129,7 +146,7 @@ cran_scored_20250812 <- purrr::map(labs, ~
   purrr::reduce(dplyr::bind_rows)
 
 # output as rda
-# usethis::use_data(cran_assessed_20250812, overwrite = TRUE) # wait on this
+usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
 usethis::use_data(cran_scored_20250812, overwrite = TRUE)
 
 
@@ -151,69 +168,39 @@ nrow(cran_scored_20250812) - nrow(cran_scored_20230621) # 2,782 more pkgs
 data("cran_assessed_20250812")
 object.size(cran_assessed_20250812) / 1000000000 # 1.5 GB - TOO BIG!
 
-#
-# ---- Strip function ----
-#
+# If strip_recording wasn't performed above, you can do it after the fact too:
 
-# Now, strip out the, the .recording / 'with_eval_recording' attribute
-# since it made our assessment object blow up in size
-
-strip_recording <- function(assessment) {
-
-  these_cols <- colnames(assessment)
-  lapply(these_cols, \(col_name) {
-    cat("\n\nCol Name =", col_name, "\n")
-    col_vector <- assessment[[col_name]]
-    col_len <- length(col_vector)
-    lite_col_vector <- lapply(1:col_len, function(i) {
-      val <- col_vector[i]
-      # cat("num =", i, ", val =", val[[1]],"\n")
-      out <-
-        list(
-          structure(
-            val[[1]],
-            .recording = NULL,
-            class = setdiff(class(val[[1]]), "with_eval_recording")
-          )
-        )
-      attributes(out) <- attributes(val)
-      out
-    }) #|> unlist(use.names = FALSE) # need this?
-    assessment[[col_name]] <<- lite_col_vector
-  })
-  assessment
-}
 
 
 #
-# ---- Clean up ----
+# # ---- Clean up ----
+# #
 #
-
-# Let's strip that junk out .recording & any pkg_errors
-assessed_cran <- cran_assessed_20250812
-
-# Oh, there's a pkg_error class'd object too, for 1 pkg: "ape"
-# assessed_cran$has_news[589]
-# assessed_cran$has_news[590] # error
-
-cran_assessed_lite <- assessed_cran |>
-  dplyr::select(-c(package, version, pkg_ref,
-      R_version, riskmetric_run_date, riskmetric_version)) |>
-  dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
-  strip_recording()
-
-cran_assessed_20250812 <- assessed_cran |>
-  dplyr::select(c(package, version, pkg_ref,
-                  R_version, riskmetric_run_date, riskmetric_version)) |>
-  bind_cols(cran_assessed_lite) |>
-  dplyr::mutate(
-    R_version = getRversion(),
-    riskmetric_run_date = as.Date("2025-08-12"),
-    riskmetric_version = packageVersion("riskmetric")
-  )
-
-object.size(cran_assessed_20250812) / 1000000 # 1.5 GB down to 848 MB
-
-# Now store data
-usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
+# # Let's strip that junk out .recording & any pkg_errors
+# assessed_cran <- cran_assessed_20250812
+#
+# # Oh, there's a pkg_error class'd object too, for 1 pkg: "ape"
+# # assessed_cran$has_news[589]
+# # assessed_cran$has_news[590] # error
+#
+# cran_assessed_lite <- assessed_cran |>
+#   dplyr::select(-c(package, version, pkg_ref,
+#       R_version, riskmetric_run_date, riskmetric_version)) |>
+#   dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
+#   strip_recording()
+#
+# cran_assessed_20250812 <- assessed_cran |>
+#   dplyr::select(c(package, version, pkg_ref,
+#                   R_version, riskmetric_run_date, riskmetric_version)) |>
+#   bind_cols(cran_assessed_lite) |>
+#   dplyr::mutate(
+#     R_version = getRversion(),
+#     riskmetric_run_date = as.Date("2025-08-12"),
+#     riskmetric_version = packageVersion("riskmetric")
+#   )
+#
+# object.size(cran_assessed_20250812) / 1000000 # 1.5 GB down to 848 MB
+#
+# # Now store data
+# usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
 
