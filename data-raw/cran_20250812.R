@@ -2,11 +2,12 @@
 ## code to prepare `cran_20250812` dataset
 
 # If needed
-# utils::install.packages(c("riskmetric", "dplyr", "cranlogs")
+# utils::install.packages(c("riskmetric", "dplyr", "cranlogs", "labelled")
 
 library(dplyr)
 library(cranlogs)
 library(riskmetric)
+library(labelled)
 # packageVersion("riskmetric") # ‘0.2.5’
 
 ######
@@ -136,6 +137,7 @@ incrmt_cran(avail_pkgs[(7*bins+1):pkgs_ct], "08")
 
 # Later, put components back together & save as .rda file
 labs <- paste0("0", 1:8)
+# .x <- "01" # rm(.x)
 cran_assessed_20250812 <- purrr::map(labs, ~
     readRDS(paste0("data-raw/cran20250812/cran_assessed_20250812_",.x,".rds"))
     ) |>
@@ -172,35 +174,44 @@ object.size(cran_assessed_20250812) / 1000000000 # 1.5 GB - TOO BIG!
 
 
 
+
+# ---- Clean up ----
 #
-# # ---- Clean up ----
-# #
-#
-# # Let's strip that junk out .recording & any pkg_errors
-# assessed_cran <- cran_assessed_20250812
-#
-# # Oh, there's a pkg_error class'd object too, for 1 pkg: "ape"
-# # assessed_cran$has_news[589]
-# # assessed_cran$has_news[590] # error
-#
-# cran_assessed_lite <- assessed_cran |>
-#   dplyr::select(-c(package, version, pkg_ref,
-#       R_version, riskmetric_run_date, riskmetric_version)) |>
-#   dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
-#   strip_recording()
-#
-# cran_assessed_20250812 <- assessed_cran |>
-#   dplyr::select(c(package, version, pkg_ref,
-#                   R_version, riskmetric_run_date, riskmetric_version)) |>
-#   bind_cols(cran_assessed_lite) |>
-#   dplyr::mutate(
-#     R_version = getRversion(),
-#     riskmetric_run_date = as.Date("2025-08-12"),
-#     riskmetric_version = packageVersion("riskmetric")
-#   )
-#
-# object.size(cran_assessed_20250812) / 1000000 # 1.5 GB down to 848 MB
-#
-# # Now store data
-# usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
+
+# Let's strip that junk out .recording & any pkg_errors
+assessed_cran <- cran_assessed_20250812
+
+# Oh, there's a pkg_error class'd object too, for 1 pkg: "ape"
+# assessed_cran$has_news[589]
+# assessed_cran$has_news[590] # error
+
+
+ass_cran <- assessed_cran |>
+  dplyr::select(-c(package, version, pkg_ref,
+                   R_version, riskmetric_run_date, riskmetric_version))
+
+
+cran_assessed_lite <- ass_cran |>
+  dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
+  strip_recording() |>
+  labelled::set_variable_labels(
+    .labels = labelled::get_variable_labels(ass_cran)
+  )
+# object.size(cran_assessed_lite) / 1000000 # Should be smaller. Likely 1/2 the size
+
+
+cran_assessed_20250812 <- assessed_cran |>
+  dplyr::select(c(package, version, pkg_ref,
+                  R_version, riskmetric_run_date, riskmetric_version)) |>
+  dplyr::bind_cols(cran_assessed_lite) |>
+  dplyr::mutate(
+    R_version = getRversion(),
+    riskmetric_run_date = as.Date("2025-08-12"),
+    riskmetric_version = packageVersion("riskmetric")
+  )
+
+object.size(cran_assessed_20250812) / 1000000 # 1.5 GB down to 848 MB
+
+# Now store data
+usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
 
