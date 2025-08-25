@@ -134,8 +134,9 @@ usethis::use_data(cran_scored_20250812, overwrite = TRUE)
 
 
 
-
-# test some things
+#
+# ---- Quantify Size ----
+#
 # First, compare size to old run
 
 data("cran_scored_20230621")
@@ -146,11 +147,13 @@ object.size(cran_scored_20250812) / 1000000 # 20 MB
 
 nrow(cran_scored_20250812) - nrow(cran_scored_20230621) # 2,782 more pkgs
 
-
 # Check size of assessments tibble
 data("cran_assessed_20250812")
 object.size(cran_assessed_20250812) / 1000000000 # 1.5 GB - TOO BIG!
 
+#
+# ---- Strip function ----
+#
 
 # Now, strip out the, the .recording / 'with_eval_recording' attribute
 # since it made our assessment object blow up in size
@@ -181,6 +184,10 @@ strip_recording <- function(assessment) {
   assessment
 }
 
+
+#
+# ---- Clean up ----
+#
 
 # Let's strip that junk out .recording & any pkg_errors
 assessed_cran <- cran_assessed_20250812

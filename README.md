@@ -45,16 +45,17 @@ Soon, we'll begin to introduce more functionality to the package. However, in
 the meantime, you can access and play with an initial data.frame containing
 `riskmetric` scores for all of CRAN. After you've installed `riskscore` from
 Github following the instruction above, you can run the following code to
-interact with our initial (placeholder) data.frame:
+interact with the latest data.frame of scores & assessments:
 
 ```r
 library(riskscore)
 data(cran_scored_20250812)
+data(cran_assessed_20250812)
 ```
 
-This data.frame contains 19,715 observations (one row per package) and 24 
-variables, 18 of which are `riskmetric` assessments. To date, the first 6
-columns contain package, version, risk_date, risk_version, pkg_score, and 
+This data.frame contains >20k observations (one row per package) and 24 
+variables, 18 of which are `riskmetric` assessments. To date, 6 columns contain
+metadata like package, version, risk_date, risk_version, pkg_score, and 
 rank_score. In the future, these columns may change.
 
 Note: to observe how this data.frame was prepared, you can run the following
