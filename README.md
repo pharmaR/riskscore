@@ -49,6 +49,12 @@ interact with the latest data.frame of scores & assessments:
 
 ```r
 library(riskscore)
+data(cran_scored_lastest)
+data(cran_assessed_lastest)
+```
+
+Similarly, you can grab data from any of the previous run dates by calling them explicitly:
+```r
 data(cran_scored_20250812)
 data(cran_assessed_20250812)
 ```
