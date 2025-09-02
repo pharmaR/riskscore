@@ -45,23 +45,30 @@ Soon, we'll begin to introduce more functionality to the package. However, in
 the meantime, you can access and play with an initial data.frame containing
 `riskmetric` scores for all of CRAN. After you've installed `riskscore` from
 Github following the instruction above, you can run the following code to
-interact with our initial (placeholder) data.frame:
+interact with the latest data.frame of scores & assessments:
 
 ```r
 library(riskscore)
-data(v0.2.1_cran_20230621)
+data(cran_scored_lastest)
+data(cran_assessed_lastest)
 ```
 
-This data.frame contains 19,715 observations (one row per package) and 24 
-variables, 18 of which are `riskmetric` assessments. To date, the first 6
-columns contain package, version, risk_date, risk_version, pkg_score, and 
+Similarly, you can grab data from any of the previous run dates by calling them explicitly:
+```r
+data(cran_scored_20250812)
+data(cran_assessed_20250812)
+```
+
+This data.frame contains >20k observations (one row per package) and 24 
+variables, 18 of which are `riskmetric` assessments. To date, 6 columns contain
+metadata like package, version, risk_date, risk_version, pkg_score, and 
 rank_score. In the future, these columns may change.
 
 Note: to observe how this data.frame was prepared, you can run the following
 code to retrieve an R script used to reproduce the results:
 
 ```r
-file.edit(system.file("reproduce_scores/reproduce_v0.2.1_cran_20230621.R", package = "riskscore"))
+file.edit(system.file("reproduce_scores/reproduce_cran_20250812.R", package = "riskscore"))
 ```
 
 But, in general, the results will be prepared using a 
