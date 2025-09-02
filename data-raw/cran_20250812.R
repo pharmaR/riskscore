@@ -12,7 +12,8 @@ library(labelled)
 
 ######
 # identify last available day of data
-date_avail <- cranlogs::cran_downloads("dplyr", "last-day") |> pull(date) #6/21
+date_avail <- cranlogs::cran_downloads("dplyr", "last-day") |> pull(date) #8/12
+# date_avail <- as.Date('2025-08-12')
 
 # Get daily downloads for all pkgs from Rstudio CRAN Mirror for the last year
 avail_pkgs <- available.packages("https://cran.rstudio.com/src/contrib")[,1]
@@ -147,9 +148,12 @@ cran_scored_20250812 <- purrr::map(labs, ~
   ) |>
   purrr::reduce(dplyr::bind_rows)
 
-# output as rda
-usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
+# output as rda - uncomment to run
+# usethis::use_data(cran_assessed_latest, overwrite = TRUE)
+# usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
 usethis::use_data(cran_scored_20250812, overwrite = TRUE)
+cran_scored_latest <- cran_scored_20250812
+usethis::use_data(cran_scored_latest, overwrite = TRUE)
 
 
 
@@ -190,6 +194,45 @@ ass_cran <- assessed_cran |>
   dplyr::select(-c(package, version, pkg_ref,
                    R_version, riskmetric_run_date, riskmetric_version))
 
+#
+### Test area ###
+# Used to strip out the the .recording / 'with_eval_recording' attribute
+# since it made our assessment object blow up in size
+# strip_recording <- function(assessment) {
+#   # assessment <- ass_cran # for debugging
+#   these_cols <- colnames(assessment)
+#
+#   no_record <- lapply(these_cols, \(col_name) {
+#     # col_name <- these_cols[2] # for debugging
+#     cat("\n\nCol Name =", col_name, "\n")
+#     col_vector <- assessment[[col_name]]
+#     col_len <- length(col_vector)
+#     lite_col_vector <- lapply(1:col_len, function(i) {
+#       # i <- 1 # for debugging
+#       val <- col_vector[i]
+#       # cat("num =", i, ", val =", val[[1]],"\n")
+#       # out <-
+#         # list(
+#           structure(
+#             val[[1]],
+#             .recording = NULL,
+#             class = setdiff(class(val[[1]]), "with_eval_recording")
+#           )
+#       # )
+#       # attributes(out) <- attributes(val) # need this?
+#       # out
+#     }) #|> unlist(use.names = FALSE) # need this?
+#     object.size(assessment[[col_name]])
+#     object.size(lite_col_vector)
+#     assessment[[col_name]] <<- lite_col_vector
+#   })
+#   # assessment[["has_new"]] |> attributes()
+#   # object.size(no_record) / 1000000000 # 1.5 GB - TOO BIG!
+#   class(no_record) <- class(assessment)
+#   no_record
+#   # assessment
+# }
+
 
 cran_assessed_lite <- ass_cran |>
   dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
@@ -213,5 +256,7 @@ cran_assessed_20250812 <- assessed_cran |>
 object.size(cran_assessed_20250812) / 1000000 # 1.5 GB down to 848 MB
 
 # Now store data
-usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
 
+usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
+cran_assessed_latest <- cran_assessed_20250812
+usethis::use_data(cran_assessed_latest, overwrite = TRUE)
