@@ -40,6 +40,15 @@ cran_scored_20250812 |>
 # read dcf file using base R
 # dcf_in2 <- as.data.frame(read.dcf("data-raw/cran20250812/cran_scored_20250812.dcf"))
 
+# Install {riskscore} package from GitHub
+remotes::install_github("pharmaR/riskscore", force = TRUE, ref = "dcf-test")
+cran_scored <- riskmetric::pkg_metric_import(
+  system.file("extdata/cran_scored_20250812.dcf", package = "riskscore")
+)
+object.size(cran_scored) / 1000000 # 8 MB
+
+
+
 
 
 
