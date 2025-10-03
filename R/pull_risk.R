@@ -9,7 +9,6 @@
 #' @param type character, either 'assessed' or 'scored'
 #' @param date character, of format 'YYYY-MM-DD',  'YYYYMMDD', or 'latest'
 #'
-#' @importFrom arrow read_parquet
 #' @importFrom stringr str_detect
 #'
 #' @examples
@@ -23,6 +22,8 @@ pull_risk <- function(
   type = c("assessed", "scored")[1],
   date = "latest" # can also pull by older date
   ) {
+  # keep this here for now so we don't have to install arrow or add it to the description
+  # @importFrom arrow read_parquet
 
   if(!source %in% c("cran")) stop("Only 'cran' source is supported right now")
   if(!date %in% c("latest", "2023-06-21", "2025-08-12", "2025-09-28")) {
