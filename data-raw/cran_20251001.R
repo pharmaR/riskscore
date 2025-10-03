@@ -5,7 +5,7 @@
 # utils::install.packages(c("riskmetric", "dplyr", "cranlogs", "labelled")
 
 library(dplyr)
-library(cranlogs)
+# library(cranlogs)
 library(riskmetric)
 library(arrow)
 # library(labelled)
@@ -13,8 +13,8 @@ library(arrow)
 
 ######
 # identify last available day of data
-date_avail <- cranlogs::cran_downloads("dplyr", "last-day") |> pull(date) #8/12
-# date_avail <- as.Date('2025-08-12')
+# date_avail <- cranlogs::cran_downloads("dplyr", "last-day") |> pull(date) #8/12
+date_avail <- as.Date('2025-10-01')
 
 # Get daily downloads for all pkgs from Rstudio CRAN Mirror for the last year
 options( repos = c(
@@ -83,7 +83,7 @@ strip_recording <- function(assessment) {
 incrmt_cran <- function(pkg_names, label) {
   cat("\n\nKicking off batch", label,"\n")
   # pkg_names <- c("dplyr") # for testing / debugging
-  # label <- "'TEST'"
+  # label <- "TEST"
   incrmt_ct <- length(pkg_names)
   cat("\n-->", incrmt_ct, "package(s) to process for batch", label,"\n")
   st <- Sys.time()
@@ -119,12 +119,14 @@ incrmt_cran <- function(pkg_names, label) {
       riskmetric_run_date = date_avail,
       riskmetric_version = packageVersion("riskmetric")
     ) %>%
-    dplyr::select(-pkg_ref, package, version, everything())
-  arrow::write_parquet(
-    cran_assessed_bundle,
-    file.path(folder_path, paste0("cran_assessed_bundle_", label, ".parquet")))
-  # saveRDS(cran_assessed_bundle,
-  #         file.path(folder_path, "cran_assessed_bundle_",label,".rds"))
+    dplyr::select( package, version, everything(), -pkg_ref)
+  # Doesn't work
+  # cran_assessed_bundle |>
+  #   arrow::as_arrow_table() |>
+  #   arrow::write_parquet(
+  #     file.path(folder_path, paste0("cran_assessed_bundle_", label, ".parquet")))
+  saveRDS(cran_assessed_bundle,
+          file.path(folder_path, paste0("cran_assessed_bundle_",label,".rds")))
 
   cran_scored_bundle <- scored_cran %>%
     dplyr::mutate(
@@ -133,20 +135,22 @@ incrmt_cran <- function(pkg_names, label) {
       riskmetric_version = packageVersion("riskmetric")
     ) %>%
     dplyr::arrange(pkg_score) %>%
-    dplyr::select(-pkg_ref, package, version, pkg_score, everything())
+    dplyr::select(package, version, pkg_score, everything(), -pkg_ref)
 
-  arrow::write_parquet(
-    cran_scored_bundle,
-    file.path(folder_path, paste0("cran_scored_bundle_", label, ".parquet")))
-  # saveRDS(cran_scored_bundle, paste0("data-raw/cran20250812/cran_scored_bundle_",label,".rds"))
-  cat("\n--> batch", label, "saved.\n\n")
+  # Doesn't work:
+  # arrow::write_parquet(
+  #   cran_scored_bundle,
+  #   file.path(folder_path, paste0("cran_scored_bundle_", label, ".parquet")))
+  saveRDS(cran_scored_bundle, #paste0("data-raw/cran20250812/cran_scored_bundle_",label,".rds"))
+          file.path(folder_path, paste0("cran_scored_bundle_",label,".rds")))
+  cat("\n--> batch '", label, "' saved.\n\n")
 }
 
 # create directory to hold the batch files
 date_lab <- gsub("-", "", date_avail)
 folder_nm <- paste0("cran", date_lab)
 folder_path <- file.path("data-raw", folder_nm)
-if(!dir.exists(folder_path)) dir.create(folder_path)
+# if(!dir.exists(folder_path)) dir.create(folder_path)
 
 pkgs_ct <- length(avail_pkgs)
 bins <- ceiling(pkgs_ct / 8)
@@ -162,36 +166,51 @@ incrmt_cran(avail_pkgs[(7*bins+1):pkgs_ct], "08")
 
 
 
-# # Later, put components back together & save as .rda file
-# labs <- paste0("0", 1:8)
-# # .x <- "01" # rm(.x)
-# cran_assessed_date <- purrr::map(labs, ~
-#     file.path(folder_path, paste0("cran_assessed_bundle_",labs,".parquet")) |> arrow::read_parquet()
-#     # readRDS(paste0("data-raw/cran20250812/cran_assessed_bundle_",.x,".rds"))
-#     ) |>
-#   purrr::reduce(dplyr::bind_rows)
-# cran_scored_date <- purrr::map(labs, ~
-#      file.path(folder_path, paste0("cran_scored_bundle_",labs,".parquet")) |> arrow::read_parquet()
-#      # readRDS(paste0("data-raw/cran20250812/cran_scored_20250812_",.x,".rds"))
-#   ) |>
-#   purrr::reduce(dplyr::bind_rows)
+# Comment out everything below here if you just want to run the incremental &
+# source as a workbench job
+
+# Later, put components back together & save as .rda file
+labs <- paste0("0", 1:8)
+# .x <- "01" # rm(.x)
+cran_assessed_latest <- purrr::map(labs, ~
+    folder_path |>
+    file.path(paste0("cran_assessed_bundle_",.x,".rds")) |>  # .parquet
+      # arrow::read_parquet()
+    readRDS()
+  ) |>
+  purrr::reduce(dplyr::bind_rows)
+# Next, scores
+cran_scored_latest <- purrr::map(labs, ~
+     folder_path |>
+     file.path(paste0("cran_scored_bundle_",.x,".rds")) |>  # .parquet
+     # arrow::read_parquet()
+     readRDS()
+) |>
+  purrr::reduce(dplyr::bind_rows)
+
 #
-# # output as .rda or .parquet???
+# ---- Quantify Size ----
 #
-# # # .rda
-# # # name it after the run date first
-# # usethis::use_data(
-# #   cran_assessed_date, name = paste0("cran_assessed_", date_lab), overwrite = TRUE)
-# # usethis::use_data(
-# #   cran_scored_date, name = paste0("cran_scored_", date_lab),overwrite = TRUE)
-# # # name it as "latest"
-# # usethis::use_data(
-# #   cran_assessed_date,  name = "cran_assessed_latest", overwrite = TRUE)
-# # usethis::use_data(
-# #   cran_scored_date, name = "cran_scored_latest", overwrite = TRUE)
+
+object.size(cran_assessed_date) / 1000000 # 866.1 MB
+object.size(cran_scored_date) / 1000000 # 9 MB
+
 #
-# # .parquet
-# # name it after the run date first
+# ---- Output as .rda or .parquet ----
+#
+
+# .rda
+# name it as "latest"
+usethis::use_data(cran_assessed_latest, overwrite = TRUE)
+usethis::use_data(cran_scored_latest, overwrite = TRUE)
+# name it after the run date first
+cran_assessed_20251001 <- cran_assessed_latest
+cran_scored_20251001 <- cran_scored_latest
+usethis::use_data(cran_assessed_20251001, overwrite = TRUE)
+usethis::use_data(cran_scored_20251001, overwrite = TRUE)
+
+# .parquet - Error: NotImplemented: extension
+# name it after the run date first
 # arrow::write_parquet( cran_assessed_date,
 #   file.path("data", paste0("cran_assessed_", date_lab, ".parquet")))
 # arrow::write_parquet( cran_scored_date,

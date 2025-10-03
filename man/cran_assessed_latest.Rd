@@ -25,6 +25,6 @@ A data.frame
 }
 \description{
 A data.frame containing all of CRAN was assessed using riskmetric v0.2.5 on
-2025-08-12 & R v4.5.1.
+2025-10-01 & R v4.5.1.
 }
 \keyword{datasets}

@@ -16,7 +16,7 @@
 #' pull_risk(type = "scored")
 #'
 #' @return A data.frame
-#' @export
+#' @keywords internal
 #'
 pull_risk <- function(
   source = "cran", # anything else is unsupported right now
