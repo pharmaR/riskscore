@@ -1,3 +1,5 @@
+# riskscore (development version)
+
 # riskscore 0.0.2
 
 * Added `cran_scored_20251001` & `cran_assessed_20251001` datasets with `{riskmetric}` output for all CRAN packages as of 2024-10-01.

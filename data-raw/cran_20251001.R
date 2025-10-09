@@ -60,7 +60,9 @@ metric_weights <- ifelse(is.na(metric_scores[,1]), 0, 1)
 # Used to strip out the the .recording / 'with_eval_recording' attribute
 # since it made our assessment object blow up in size
 strip_recording <- function(assessment) {
-  these_cols <- colnames(assessment)
+  cols_ <- colnames(assessment)
+  these_cols <- cols_[!cols_ %in% c("package", "version", "pkg_ref",
+        "R_version", "riskmetric_run_date", "riskmetric_version")] # new
   lapply(these_cols, \(col_name) {
     cat("\n\nStripping Col:", col_name, "\n")
     col_vector <- assessment[[col_name]]
@@ -135,7 +137,7 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
       riskmetric_run_date = date_avail,
       riskmetric_version = packageVersion("riskmetric")
     ) %>%
-    dplyr::select( package, version, everything(), -pkg_ref)
+    dplyr::select( package, version, everything())
   # Doesn't work
   # repo_assessed_bundle |>
   #   arrow::as_arrow_table() |>
@@ -151,7 +153,7 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
       riskmetric_version = packageVersion("riskmetric")
     ) %>%
     dplyr::arrange(pkg_score) %>%
-    dplyr::select(package, version, pkg_score, everything(), -pkg_ref)
+    dplyr::select(package, version, pkg_score, everything())
 
   # Doesn't work:
   # arrow::write_parquet(
@@ -233,18 +235,22 @@ cran_ <- repo_united("cran")
 bioc_ <- repo_united("bioc")
 
 assessed_latest <- cran_$assessed |>
-  dplyr::bind_rows(bioc_$assessed)
+  dplyr::bind_rows(
+    bioc_$assessed |>
+      dplyr::mutate(repo_src_ver = "3.21") # Manual for now
+    )
 
 scored_latest <- cran_$scored |>
-  dplyr::bind_rows(bioc_$scored)
+  dplyr::bind_rows(bioc_$scored|> dplyr::mutate(repo_src_ver = "3.21"))
 
+View(assessed_latest |> dplyr::filter(repo_src == "bioc") |> head())
 
 #
 # ---- Quantify Size ----
 #
 
-object.size(cran_assessed_date) / 1000000 # 866.1 MB
-object.size(cran_scored_date) / 1000000 # 9 MB
+# object.size(assessed_latest) / 1000000 # 911.3 MB
+# object.size(scored_latest)   / 1000000   # 9.7 MB
 
 #
 # ---- Output as .rda or .parquet ----
@@ -252,13 +258,15 @@ object.size(cran_scored_date) / 1000000 # 9 MB
 
 # .rda
 # name it as "latest"
-usethis::use_data(assessed_latest, overwrite = TRUE)
 usethis::use_data(scored_latest, overwrite = TRUE)
+usethis::use_data(assessed_latest, overwrite = TRUE)
+
 # name it after the run date first
-assessed_20251001 <- assessed_latest
 scored_20251001 <- scored_latest
-usethis::use_data(assessed_20251001, overwrite = TRUE)
+assessed_20251001 <- assessed_latest
 usethis::use_data(scored_20251001, overwrite = TRUE)
+usethis::use_data(assessed_20251001, overwrite = TRUE)
+
 
 # .parquet - Error: NotImplemented: extension
 # name it after the run date first
