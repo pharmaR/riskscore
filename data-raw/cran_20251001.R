@@ -61,8 +61,10 @@ metric_weights <- ifelse(is.na(metric_scores[,1]), 0, 1)
 # since it made our assessment object blow up in size
 strip_recording <- function(assessment) {
   cols_ <- colnames(assessment)
-  these_cols <- cols_[!cols_ %in% c("package", "version", "pkg_ref",
-        "R_version", "riskmetric_run_date", "riskmetric_version")] # new
+  # Uncomment this for next time:
+  # these_cols <- cols_[!cols_ %in% c("package", "version", "pkg_ref",
+  #       "R_version", "riskmetric_run_date", "riskmetric_version")] # new
+  these_cols <- cols_
   lapply(these_cols, \(col_name) {
     cat("\n\nStripping Col:", col_name, "\n")
     col_vector <- assessment[[col_name]]
@@ -137,7 +139,7 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
       riskmetric_run_date = date_avail,
       riskmetric_version = packageVersion("riskmetric")
     ) %>%
-    dplyr::select( package, version, everything())
+    dplyr::select( package, version, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
   # Doesn't work
   # repo_assessed_bundle |>
   #   arrow::as_arrow_table() |>
@@ -153,7 +155,7 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
       riskmetric_version = packageVersion("riskmetric")
     ) %>%
     dplyr::arrange(pkg_score) %>%
-    dplyr::select(package, version, pkg_score, everything())
+    dplyr::select(package, version, pkg_score, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
 
   # Doesn't work:
   # arrow::write_parquet(
@@ -163,6 +165,8 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
           file.path(folder_path, paste0(repo, "_scored_bundle_",label,".rds")))
   cat("\n-->", repo,"batch '", label, "' saved.\n\n")
 }
+
+
 
 #
 # ---- CRAN Pkgs ----
@@ -181,6 +185,10 @@ incrmt_repo(cranny[(5*bins+1):(6*bins)], "06")
 incrmt_repo(cranny[(6*bins+1):(7*bins)], "07")
 incrmt_repo(cranny[(7*bins+1):pkgs_ct], "08")
 
+
+
+
+
 #
 # ---- Bioconductor Pkgs ----
 #
@@ -195,14 +203,31 @@ bins <- ceiling(pkgs_ct / 8)
 # bio[54] # was a problem child?
 # incrmt_repo(bio[54], "bioc", "01")
 
+
 # run for real
 incrmt_repo(bio[1:bins], "bioc", "01")
 incrmt_repo(bio[(1*bins+1):(2*bins)], "bioc", "02")
 incrmt_repo(bio[(2*bins+1):(3*bins)], "bioc", "03")
 incrmt_repo(bio[(3*bins+1):(4*bins)], "bioc", "04")
+incrmt_repo(bio[(4*bins+1):(5*bins)], "bioc", "05")
+incrmt_repo(bio[(5*bins+1):(6*bins)], "bioc", "06")
+incrmt_repo(bio[(6*bins+1):(7*bins)], "bioc", "07")
+incrmt_repo(bio[(7*bins+1):pkgs_ct], "bioc", "08")
 
 # Comment out everything below here if you just want to run the incremental &
 # source as a workbench job
+
+
+
+# Testing Missing Packages, if any
+
+# source("dev/missing_bioc.R") # get missings
+# pkgs_ct <- length(missing_bioc)
+# bins <- ceiling(pkgs_ct / 8)
+#
+# incrmt_repo(pkg_names = runb, repo = "bioc", label = "01_delete")
+
+
 
 # Later, put components back together & save as .rda file
 # how many files are there that end in "assessed_bundle_XX.rds"?
@@ -233,24 +258,23 @@ repo_united <- function(repo){
 }
 cran_ <- repo_united("cran")
 bioc_ <- repo_united("bioc")
+bioc_assessed <- bioc_$assessed |> dplyr::mutate(repo_src_ver = "3.21") # Manual for now
+bioc_scored <- bioc_$scored |> dplyr::mutate(repo_src_ver = "3.21") # Manual for now
+# runb %in% bioc_assessed$package # check for missing
 
 assessed_latest <- cran_$assessed |>
-  dplyr::bind_rows(
-    bioc_$assessed |>
-      dplyr::mutate(repo_src_ver = "3.21") # Manual for now
-    )
+  dplyr::bind_rows(bioc_assessed)
 
 scored_latest <- cran_$scored |>
-  dplyr::bind_rows(bioc_$scored|> dplyr::mutate(repo_src_ver = "3.21"))
+  dplyr::bind_rows(bioc_scored)
 
-View(assessed_latest |> dplyr::filter(repo_src == "bioc") |> head())
 
 #
 # ---- Quantify Size ----
 #
 
-# object.size(assessed_latest) / 1000000 # 911.3 MB
-# object.size(scored_latest)   / 1000000   # 9.7 MB
+# object.size(assessed_latest) / 1000000 # 956.2 MB
+# object.size(scored_latest)   / 1000000   # 10.3 MB
 
 #
 # ---- Output as .rda or .parquet ----
