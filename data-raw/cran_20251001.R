@@ -7,7 +7,7 @@
 library(dplyr)
 # library(cranlogs)
 library(riskmetric)
-library(arrow)
+# library(arrow)
 # library(labelled)
 # packageVersion("riskmetric") # ‘0.2.5’
 
@@ -19,12 +19,19 @@ date_avail <- as.Date('2025-10-01')
 # Get daily downloads for all pkgs from Rstudio CRAN Mirror for the last year
 options( repos = c(
   CRAN = paste0("https://packagemanager.posit.co/cran/", date_avail)
-  # , CRAN = "https://cran.rstudio.com/src/contrib"
-  # , BioC = paste0("https://packagemanager.posit.co/bioconductor/", date_avail)
+  # , CRAN = "https://cran.rstudio.com/src/contrib" # old way
+  # , BioC = paste0("https://packagemanager.posit.co/bioconductor/", date_avail) # doesn't work
   # , BioC = "https://bioconductor.org/packages/3.17/bioc"
+  , BioC = "https://bioconductor.org/packages/3.21/bioc"
 ))
-avail_pkgs <- available.packages()[,1]
+avail_pkgs <- available.packages() |> as.data.frame()
+table(avail_pkgs$Repository)
+cran_pkgs <- avail_pkgs[stringr::str_detect(avail_pkgs$Repository, "cran"), ]
+bioc_pkgs <- avail_pkgs[stringr::str_detect(avail_pkgs$Repository, "bioc"), ]
 
+cran_pkgs |> nrow()
+bioc_pkgs |> nrow()
+avail_pkgs |> nrow() # total
 
 # Assess the 'dplyr' pkg to identify which metrics are available for 'pkg_cran_remote'
 assessed <- c("dplyr") %>%
@@ -80,28 +87,37 @@ strip_recording <- function(assessment) {
 #
 # ---- Incrementally assess & score cran ----
 #
-incrmt_cran <- function(pkg_names, label) {
-  cat("\n\nKicking off batch", label,"\n")
+
+# create directory to hold the batch files
+date_lab <- gsub("-", "", date_avail)
+folder_nm <- paste0("repos", date_lab)
+folder_path <- file.path("data-raw", folder_nm)
+# if(!dir.exists(folder_path)) dir.create(folder_path)
+
+incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
+  # repo = c('cran')
   # pkg_names <- c("dplyr") # for testing / debugging
   # label <- "TEST"
+
+  cat("\n\nKicking off batch", label,"for", repo,"repo.\n")
   incrmt_ct <- length(pkg_names)
-  cat("\n-->", incrmt_ct, "package(s) to process for batch", label,"\n")
+  cat("\n-->", incrmt_ct, "package(s) to process for", repo, "batch", label,"\n")
   st <- Sys.time()
-  assessed_cran0 <-
+  assessed_repo0 <-
     pkg_names |>
-    riskmetric::pkg_ref(source = "pkg_cran_remote", repos = c("https://cran.rstudio.com")) |>
+    riskmetric::pkg_ref(source = paste("pkg", repo, "remote", sep = "_")) |>
     dplyr::as_tibble() |>
     riskmetric::pkg_assess()
 
-  assessed_cran <- assessed_cran0 |>
+  assessed_repo <- assessed_repo0 |>
     # remove any 'pkg_metric_errors'
     dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
     strip_recording() # strip .recording attribute
-  # object.size(assessed_cran0)
-  # object.size(assessed_cran)
+  # object.size(assessed_repo0)
+  # object.size(assessed_repo)
   cat("\n--> batch", label,"Assessed.\n")
 
-  scored_cran <- assessed_cran0 %>%
+  scored_repo <- assessed_repo0 %>%
     riskmetric::pkg_score(weights = metric_weights)
   cat("\n--> batch", label,"scored\n")
 
@@ -113,7 +129,7 @@ incrmt_cran <- function(pkg_names, label) {
   # ---- Prepare the datasets for saving ----
   #
   # Save the assessed and scored datasets
-  cran_assessed_bundle <- assessed_cran %>%
+  repo_assessed_bundle <- assessed_repo %>%
     dplyr::mutate(
       R_version = getRversion(),
       riskmetric_run_date = date_avail,
@@ -121,14 +137,14 @@ incrmt_cran <- function(pkg_names, label) {
     ) %>%
     dplyr::select( package, version, everything(), -pkg_ref)
   # Doesn't work
-  # cran_assessed_bundle |>
+  # repo_assessed_bundle |>
   #   arrow::as_arrow_table() |>
   #   arrow::write_parquet(
-  #     file.path(folder_path, paste0("cran_assessed_bundle_", label, ".parquet")))
-  saveRDS(cran_assessed_bundle,
-          file.path(folder_path, paste0("cran_assessed_bundle_",label,".rds")))
+  #     file.path(folder_path, paste0(repo, "_assessed_bundle_", label, ".parquet")))
+  saveRDS(repo_assessed_bundle,
+          file.path(folder_path, paste0(repo, "_assessed_bundle_",label,".rds")))
 
-  cran_scored_bundle <- scored_cran %>%
+  repo_scored_bundle <- scored_repo %>%
     dplyr::mutate(
       R_version = getRversion(),
       riskmetric_run_date = date_avail,
@@ -139,54 +155,89 @@ incrmt_cran <- function(pkg_names, label) {
 
   # Doesn't work:
   # arrow::write_parquet(
-  #   cran_scored_bundle,
-  #   file.path(folder_path, paste0("cran_scored_bundle_", label, ".parquet")))
-  saveRDS(cran_scored_bundle, #paste0("data-raw/cran20250812/cran_scored_bundle_",label,".rds"))
-          file.path(folder_path, paste0("cran_scored_bundle_",label,".rds")))
-  cat("\n--> batch '", label, "' saved.\n\n")
+  #   repo_scored_bundle,
+  #   file.path(folder_path, paste0(repo, "_scored_bundle_", label, ".parquet")))
+  saveRDS(repo_scored_bundle, #paste0("data-raw/cran20250812/cran_scored_bundle_",label,".rds"))
+          file.path(folder_path, paste0(repo, "_scored_bundle_",label,".rds")))
+  cat("\n-->", repo,"batch '", label, "' saved.\n\n")
 }
 
-# create directory to hold the batch files
-date_lab <- gsub("-", "", date_avail)
-folder_nm <- paste0("cran", date_lab)
-folder_path <- file.path("data-raw", folder_nm)
-# if(!dir.exists(folder_path)) dir.create(folder_path)
+#
+# ---- CRAN Pkgs ----
+#
 
-pkgs_ct <- length(avail_pkgs)
+cranny <- cran_pkgs$Package
+pkgs_ct <- length(cranny)
 bins <- ceiling(pkgs_ct / 8)
 # bins <- 3 # for testing / debugging
-incrmt_cran(avail_pkgs[1:bins], "01")
-incrmt_cran(avail_pkgs[(1*bins+1):(2*bins)], "02")
-incrmt_cran(avail_pkgs[(2*bins+1):(3*bins)], "03")
-incrmt_cran(avail_pkgs[(3*bins+1):(4*bins)], "04")
-incrmt_cran(avail_pkgs[(4*bins+1):(5*bins)], "05")
-incrmt_cran(avail_pkgs[(5*bins+1):(6*bins)], "06")
-incrmt_cran(avail_pkgs[(6*bins+1):(7*bins)], "07")
-incrmt_cran(avail_pkgs[(7*bins+1):pkgs_ct], "08")
+incrmt_repo(cranny[1:bins], "01")
+incrmt_repo(cranny[(1*bins+1):(2*bins)], "02")
+incrmt_repo(cranny[(2*bins+1):(3*bins)], "03")
+incrmt_repo(cranny[(3*bins+1):(4*bins)], "04")
+incrmt_repo(cranny[(4*bins+1):(5*bins)], "05")
+incrmt_repo(cranny[(5*bins+1):(6*bins)], "06")
+incrmt_repo(cranny[(6*bins+1):(7*bins)], "07")
+incrmt_repo(cranny[(7*bins+1):pkgs_ct], "08")
 
+#
+# ---- Bioconductor Pkgs ----
+#
 
+# Gives vector of pkgs that were in available.packages() but missing assessments
+# source("data-raw/cran20251001/missing_output.R")
+
+bio <- bioc_pkgs$Package[bioc_pkgs$Package != "alpine"] # a problem child
+pkgs_ct <- length(bio)
+bins <- ceiling(pkgs_ct / 8)
+# bins <- 54 # for testing / debugging
+# bio[54] # was a problem child?
+# incrmt_repo(bio[54], "bioc", "01")
+
+# run for real
+incrmt_repo(bio[1:bins], "bioc", "01")
+incrmt_repo(bio[(1*bins+1):(2*bins)], "bioc", "02")
+incrmt_repo(bio[(2*bins+1):(3*bins)], "bioc", "03")
+incrmt_repo(bio[(3*bins+1):(4*bins)], "bioc", "04")
 
 # Comment out everything below here if you just want to run the incremental &
 # source as a workbench job
 
 # Later, put components back together & save as .rda file
-labs <- paste0("0", 1:8)
-# .x <- "01" # rm(.x)
-cran_assessed_latest <- purrr::map(labs, ~
-    folder_path |>
-    file.path(paste0("cran_assessed_bundle_",.x,".rds")) |>  # .parquet
-      # arrow::read_parquet()
-    readRDS()
+# how many files are there that end in "assessed_bundle_XX.rds"?
+
+repo_united <- function(repo){
+  file_ct <- list.files(folder_path, pattern = paste0(repo, "_assessed_bundle_")) |> length()
+  labs <- paste0("0", 1:file_ct)
+  # .x <- "01" # rm(.x)
+  repo_assessed_latest <- purrr::map(labs, ~
+       folder_path |>
+       file.path(paste0(repo, "_assessed_bundle_",.x,".rds")) |>  # .parquet
+       # arrow::read_parquet()
+       readRDS()
   ) |>
-  purrr::reduce(dplyr::bind_rows)
-# Next, scores
-cran_scored_latest <- purrr::map(labs, ~
-     folder_path |>
-     file.path(paste0("cran_scored_bundle_",.x,".rds")) |>  # .parquet
-     # arrow::read_parquet()
-     readRDS()
-) |>
-  purrr::reduce(dplyr::bind_rows)
+    purrr::reduce(dplyr::bind_rows)|>
+    dplyr::mutate(repo_src = repo)
+  # Next, scores
+  repo_scored_latest <- purrr::map(labs, ~
+       folder_path |>
+       file.path(paste0(repo, "_scored_bundle_",.x,".rds")) |>  # .parquet
+       # arrow::read_parquet()
+       readRDS()
+  ) |>
+    purrr::reduce(dplyr::bind_rows) |>
+    dplyr::mutate(repo_src = repo)
+
+  list(assessed = repo_assessed_latest, scored = repo_scored_latest)
+}
+cran_ <- repo_united("cran")
+bioc_ <- repo_united("bioc")
+
+assessed_latest <- cran_$assessed |>
+  dplyr::bind_rows(bioc_$assessed)
+
+scored_latest <- cran_$scored |>
+  dplyr::bind_rows(bioc_$scored)
+
 
 #
 # ---- Quantify Size ----
@@ -201,13 +252,13 @@ object.size(cran_scored_date) / 1000000 # 9 MB
 
 # .rda
 # name it as "latest"
-usethis::use_data(cran_assessed_latest, overwrite = TRUE)
-usethis::use_data(cran_scored_latest, overwrite = TRUE)
+usethis::use_data(assessed_latest, overwrite = TRUE)
+usethis::use_data(scored_latest, overwrite = TRUE)
 # name it after the run date first
-cran_assessed_20251001 <- cran_assessed_latest
-cran_scored_20251001 <- cran_scored_latest
-usethis::use_data(cran_assessed_20251001, overwrite = TRUE)
-usethis::use_data(cran_scored_20251001, overwrite = TRUE)
+assessed_20251001 <- assessed_latest
+scored_20251001 <- scored_latest
+usethis::use_data(assessed_20251001, overwrite = TRUE)
+usethis::use_data(scored_20251001, overwrite = TRUE)
 
 # .parquet - Error: NotImplemented: extension
 # name it after the run date first
