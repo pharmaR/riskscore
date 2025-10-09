@@ -1,9 +1,8 @@
-# riskscore (development version)
+# riskscore 0.0.3
 
-# riskscore 0.0.2
-
-* Added `cran_scored_20251001` & `cran_assessed_20251001` datasets with `{riskmetric}` output for all CRAN packages as of 2024-10-01.
+* Added `scored_20251001` & `assessed_20251001` datasets with `{riskmetric}` output for all CRAN packages as of 2025-10-01.
 * Considered saving as `.parquet` instead of `.rda` for more efficient storage and faster loading times. However, decided to stick with `.rda` for now due to its simplicity and wide usage in the R community. However, it's not viable at this time.
+- Add BioConductor pkgs to both assessed & scored data.frames exported from pkg
 
 # riskscore 0.0.1
 
