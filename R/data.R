@@ -67,10 +67,10 @@
 "cran_assessed_20250812"
 
 
-#' Most recent riskmetric Scores for CRAN
+#' CRAN & BioConductor riskmetric Scores on 2025-10-01
 #'
-#' A data.frame containing all of CRAN was scored using riskmetric v0.2.5 on
-#' 2025-08-12 & R v4.5.1.
+#' A data.frame containing all of CRAN & BioConductor (v3.21) was scored using
+#' riskmetric v0.2.5 on 2025-10-01 & R v4.5.1.
 #'
 #' @format A `data.frame`
 #'
@@ -81,18 +81,18 @@
 #'   \item{riskmetric_version}{The version of riskmetric used to derive scores}
 #'   \item{pkg_score}{The package's riskmetric score}
 #' }
-#'   All other variables correspond to the riskmetric scores that exist at
-#'   the time of execution. Please refer to riskmetric's documentation for more
+#'   All other variables correspond to the riskmetric scores that exist at the
+#'   time of execution. Please refer to riskmetric's documentation for more
 #'   info.
 #'
 #' @return A data.frame
-"cran_scored_latest"
+"scored_20251001"
 
 
-#' Most recent riskmetric Assessments for CRAN
+#' CRAN & BioConductor riskmetric Assessments on 2025-10-01
 #'
-#' A data.frame containing all of CRAN was assessed using riskmetric v0.2.5 on
-#' 2025-08-12 & R v4.5.1.
+#' A data.frame containing all of CRAN & BioConductor (v3.21) was assessed using
+#' riskmetric v0.2.5 on 2025-10-01 & R v4.5.1.
 #'
 #' @format A `data.frame`
 #'
@@ -102,9 +102,52 @@
 #'   \item{riskmetric_run_date}{The date riskmetric was run}
 #'   \item{riskmetric_version}{The version of riskmetric used to derive scores}
 #' }
-#' All other variables correspond to the riskmetric assessments that exist at
+#'   All other variables correspond to the riskmetric assessments that exist at
 #'   the time of execution. Please refer to riskmetric's documentation for more
 #'   info.
 #'
 #' @return A data.frame
-"cran_assessed_latest"
+"assessed_20251001"
+
+
+#' Most recent riskmetric Scores for CRAN & BioConductor
+#'
+#' A data.frame containing all of CRAN & BioConductor (v3.21) was scored using
+#' riskmetric v0.2.5 on 2025-10-01 & R v4.5.1.
+#'
+#' @format A `data.frame`
+#'
+#' \describe{
+#'   \item{package}{The name of a R package hosted on CRAN}
+#'   \item{version}{The package's version number}
+#'   \item{riskmetric_run_date}{The date riskmetric was run}
+#'   \item{riskmetric_version}{The version of riskmetric used to derive scores}
+#'   \item{pkg_score}{The package's riskmetric score}
+#' }
+#'   All other variables correspond to the riskmetric scores that exist at the
+#'   time of execution. Please refer to riskmetric's documentation for more
+#'   info.
+#'
+#' @return A data.frame
+"scored_latest"
+
+
+#' Most recent riskmetric Assessments for CRAN & BioConductor
+#'
+#' A data.frame containing all of CRAN & BioConductor (v3.21) was assessed using
+#' riskmetric v0.2.5 on 2025-10-01 & R v4.5.1.
+#'
+#' @format A `data.frame`
+#'
+#' \describe{
+#'   \item{package}{The name of a R package hosted on CRAN}
+#'   \item{version}{The package's version number}
+#'   \item{riskmetric_run_date}{The date riskmetric was run}
+#'   \item{riskmetric_version}{The version of riskmetric used to derive scores}
+#' }
+#'   All other variables correspond to the riskmetric assessments that exist at
+#'   the time of execution. Please refer to riskmetric's documentation for more
+#'   info.
+#'
+#' @return A data.frame
+"assessed_latest"
