@@ -86,7 +86,7 @@
 #'   info.
 #'
 #' @return A data.frame
-"cran_scored_20251001"
+"scored_20251001"
 
 
 #' CRAN & BioConductor riskmetric Assessments on 2025-10-01
@@ -107,7 +107,7 @@
 #'   info.
 #'
 #' @return A data.frame
-"cran_assessed_20251001"
+"assessed_20251001"
 
 
 #' Most recent riskmetric Scores for CRAN & BioConductor

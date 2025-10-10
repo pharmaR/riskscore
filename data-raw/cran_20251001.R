@@ -1,5 +1,5 @@
 #############
-## code to prepare `cran_20251001` dataset
+## code to prepare `cran_20250812` dataset
 
 # If needed
 # utils::install.packages(c("riskmetric", "dplyr", "cranlogs", "labelled")
@@ -308,106 +308,5 @@ usethis::use_data(assessed_20251001, overwrite = TRUE)
 
 
 
-#
-# ---- Quantify Size ----
-#
-# First, compare size to old run
-
-# data("cran_scored_20230621")
-# object.size(cran_scored_20230621) / 1000000 # 5 MB
-#
-# data("cran_scored_20250812")
-# object.size(cran_scored_20250812) / 1000000 # 20 MB
-#
-# nrow(cran_scored_20250812) - nrow(cran_scored_20230621) # 2,782 more pkgs
-#
-# # Check size of assessments tibble
-# data("cran_assessed_20250812")
-# object.size(cran_assessed_20250812) / 1000000000 # 1.5 GB - TOO BIG!
-
-# If strip_recording wasn't performed above, you can do it after the fact too:
 
 
-
-
-# # ---- Clean up ----
-# #
-#
-# # Let's strip that junk out .recording & any pkg_errors
-# assessed_cran <- cran_assessed_20250812
-#
-# # Oh, there's a pkg_error class'd object too, for 1 pkg: "ape"
-# # assessed_cran$has_news[589]
-# # assessed_cran$has_news[590] # error
-#
-#
-# ass_cran <- assessed_cran |>
-#   dplyr::select(-c(package, version, pkg_ref,
-#                    R_version, riskmetric_run_date, riskmetric_version))
-#
-# #
-# ### Test area ###
-# # Used to strip out the the .recording / 'with_eval_recording' attribute
-# # since it made our assessment object blow up in size
-# # strip_recording <- function(assessment) {
-# #   # assessment <- ass_cran # for debugging
-# #   these_cols <- colnames(assessment)
-# #
-# #   no_record <- lapply(these_cols, \(col_name) {
-# #     # col_name <- these_cols[2] # for debugging
-# #     cat("\n\nCol Name =", col_name, "\n")
-# #     col_vector <- assessment[[col_name]]
-# #     col_len <- length(col_vector)
-# #     lite_col_vector <- lapply(1:col_len, function(i) {
-# #       # i <- 1 # for debugging
-# #       val <- col_vector[i]
-# #       # cat("num =", i, ", val =", val[[1]],"\n")
-# #       # out <-
-# #         # list(
-# #           structure(
-# #             val[[1]],
-# #             .recording = NULL,
-# #             class = setdiff(class(val[[1]]), "with_eval_recording")
-# #           )
-# #       # )
-# #       # attributes(out) <- attributes(val) # need this?
-# #       # out
-# #     }) #|> unlist(use.names = FALSE) # need this?
-# #     object.size(assessment[[col_name]])
-# #     object.size(lite_col_vector)
-# #     assessment[[col_name]] <<- lite_col_vector
-# #   })
-# #   # assessment[["has_new"]] |> attributes()
-# #   # object.size(no_record) / 1000000000 # 1.5 GB - TOO BIG!
-# #   class(no_record) <- class(assessment)
-# #   no_record
-# #   # assessment
-# # }
-#
-#
-# cran_assessed_lite <- ass_cran |>
-#   dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
-#   strip_recording() |>
-#   labelled::set_variable_labels(
-#     .labels = labelled::get_variable_labels(ass_cran)
-#   )
-# # object.size(cran_assessed_lite) / 1000000 # Should be smaller. Likely 1/2 the size
-#
-#
-# cran_assessed_20250812 <- assessed_cran |>
-#   dplyr::select(c(package, version, pkg_ref,
-#                   R_version, riskmetric_run_date, riskmetric_version)) |>
-#   dplyr::bind_cols(cran_assessed_lite) |>
-#   dplyr::mutate(
-#     R_version = getRversion(),
-#     riskmetric_run_date = as.Date("2025-08-12"),
-#     riskmetric_version = packageVersion("riskmetric")
-#   )
-#
-# object.size(cran_assessed_20250812) / 1000000 # 1.5 GB down to 848 MB
-#
-# # Now store data
-#
-# usethis::use_data(cran_assessed_20250812, overwrite = TRUE)
-# cran_assessed_latest <- cran_assessed_20250812
-# usethis::use_data(cran_assessed_latest, overwrite = TRUE)
