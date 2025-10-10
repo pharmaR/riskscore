@@ -49,8 +49,8 @@ interact with the latest data.frame of scores & assessments:
 
 ```r
 library(riskscore)
-data(scored_lastest)
-data(assessed_lastest)
+data(scored_latest)
+data(assessed_latest)
 ```
 
 Similarly, you can grab data from any of the previous run dates by calling them explicitly:
