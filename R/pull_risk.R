@@ -26,8 +26,17 @@ pull_risk <- function(
   # @importFrom arrow read_parquet
 
   if(!source %in% c("cran")) stop("Only 'cran' source is supported right now")
-  if(!date %in% c("latest", "2023-06-21", "2025-08-12", "2025-09-28")) {
-    stop("Only 'latest', '2023-06-21', '2025-08-12', or '2025-09-28' dates are supported right now")
+  # Dynamically determine available dates from data directory
+  available_files <- list.files("data", pattern = paste0("^", source, "_", type, "_[0-9]{8}\\.parquet$"))
+  available_dates <- gsub(paste0("^", source, "_", type, "_([0-9]{8})\\.parquet$"), "\\1", available_files)
+  available_dates_formatted <- c("latest", gsub("([0-9]{4})([0-9]{2})([0-9]{2})", "\\1-\\2-\\3", available_dates))
+  if(!date %in% available_dates_formatted) {
+    stop(
+      sprintf(
+        "Only the following dates are supported right now: %s",
+        paste(available_dates_formatted, collapse = ", ")
+      )
+    )
   }
   if(stringr::str_detect(date, "-")) {
     date <- gsub("-", "", date)
