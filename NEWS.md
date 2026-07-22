@@ -1,5 +1,7 @@
 # riskscore 0.1.1
 
+- Build latest assessments and scores for cran & bioc as of 2026-07-21
+
 # riskscore 0.1.0
 
 # riskscore 0.0.3
