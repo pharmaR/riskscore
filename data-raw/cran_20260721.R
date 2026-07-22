@@ -356,11 +356,11 @@ scored_latest <- cran_$scored |>
 usethis::use_data(scored_latest, overwrite = TRUE)
 usethis::use_data(assessed_latest, overwrite = TRUE)
 
-# name it after the run date first
-scored_20260224 <- scored_latest
-assessed_20260224 <- assessed_latest
-usethis::use_data(scored_20260224, overwrite = TRUE)
-usethis::use_data(assessed_20260224, overwrite = TRUE)
+# name it after the run date too - nope. No need
+# scored_20260224 <- scored_latest
+# assessed_20260224 <- assessed_latest
+# usethis::use_data(scored_20260224, overwrite = TRUE)
+# usethis::use_data(assessed_20260224, overwrite = TRUE)
 
 
 # .parquet - Error: NotImplemented: extension

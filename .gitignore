@@ -53,6 +53,5 @@ inst/doc
 # bootstrapping files to design pkg
 dev/
 
-data-raw/cran20250812/*
-data-raw/repos20251001/*
-data-raw/repos20260224/*
+# tmp build folders
+data-raw/repos*
