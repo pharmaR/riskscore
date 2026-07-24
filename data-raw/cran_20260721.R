@@ -20,17 +20,26 @@ library(riskmetric)
 date_avail <- as.Date('2026-07-21')
 
 # Get daily downloads for all pkgs from Rstudio CRAN Mirror for the last year
+bioc_ver <- "3.22"
 options( repos = c(
   CRAN = paste0("https://packagemanager.posit.co/cran/", date_avail)
   # , CRAN = "https://cran.rstudio.com/src/contrib" # old way
   # , BioC = paste0("https://packagemanager.posit.co/bioconductor/", date_avail) # doesn't work
   # , BioC = "https://bioconductor.org/packages/3.17/bioc"
-  , BioC = "https://bioconductor.org/packages/3.22/bioc"
+  # NOTE: "<host>/packages/<ver>/bioc" is only the *software* subrepo (~2.3k
+  # pkgs). Bioconductor is split across four repos; include all of them so
+  # available.packages() returns the full ~3.7k pkgs.
+  , BioCsoft      = paste0("https://bioconductor.org/packages/", bioc_ver, "/bioc")
+  , BioCann       = paste0("https://bioconductor.org/packages/", bioc_ver, "/data/annotation")
+  , BioCexp       = paste0("https://bioconductor.org/packages/", bioc_ver, "/data/experiment")
+  , BioCworkflows = paste0("https://bioconductor.org/packages/", bioc_ver, "/workflows")
 ))
 avail_pkgs <- available.packages() |> as.data.frame()
 table(avail_pkgs$Repository)
 cran_pkgs <- avail_pkgs[stringr::str_detect(avail_pkgs$Repository, "cran"), ]
-bioc_pkgs <- avail_pkgs[stringr::str_detect(avail_pkgs$Repository, "bioc"), ]
+# Match all four Bioconductor subrepos (software / annotation / experiment /
+# workflows) — their URLs share "bioconductor" but not "bioc".
+bioc_pkgs <- avail_pkgs[stringr::str_detect(avail_pkgs$Repository, "bioconductor"), ]
 
 cran_pkgs |> nrow()
 bioc_pkgs |> nrow()
