@@ -129,23 +129,34 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label,
                                      class = "list_of_pkg_ref")
   }
 
-  # Split out `pkg_missing` refs (e.g. packages not found in the configured
-  # Bioconductor sub-repos). riskmetric's `as_tibble.list_of_pkg_ref` calls
+  # Detect refs that will crash `as_tibble.list_of_pkg_ref` — that function
+  # runs
   #   vapply(x, function(xi) as.character(xi$version), character(1L))
-  # which errors with "values must be length 1, but FUN(X[[1]]) result is
-  # length 0" when a `pkg_missing` ref is present, since missing refs have no
-  # resolvable version. We always remove them before assess/score; whether
-  # they are re-added as flagged rows in the final bundles is controlled by
-  # `keep_missing` (TRUE = retain as flagged rows, FALSE = drop entirely).
-  is_missing <- vapply(ass_repo00, function(xi) inherits(xi, "pkg_missing"),
-                       logical(1L))
+  # and errors with "values must be length 1, but FUN(X[[1]]) result is
+  # length 0" whenever a ref has no resolvable version. Two cases produce
+  # this:
+  #   1. `pkg_missing` refs (riskmetric couldn't resolve the package name
+  #      to any repo — e.g. name not on CRAN and not in the release bioc
+  #      software sub-repo).
+  #   2. `pkg_bioc_remote` refs for packages that live in a non-software
+  #      Bioc sub-repo (annotation / experiment / workflows). These pass
+  #      riskmetric's bioc availability check (their Repository URL is a
+  #      subpath of a Bioc mirror) but `pkg_bioc()` looks up the version
+  #      against the release *software* PACKAGES file only, so
+  #      `xi$version` returns `character(0)`.
+  # Both cases are equally "missing" for our purposes.
+  is_missing <- vapply(ass_repo00, function(xi) {
+    if (inherits(xi, "pkg_missing")) return(TRUE)
+    v <- tryCatch(xi$version, error = function(e) character(0))
+    length(v) == 0L || (length(v) == 1L && is.na(v))
+  }, logical(1L))
   missing_names <- character(0)
   if (any(is_missing)) {
     dropped_names <- vapply(ass_repo00[is_missing], "[[",
                             character(1L), "name")
     action <- if (isTRUE(keep_missing)) "Flagging" else "Dropping"
     cat("\n-->", action, sum(is_missing),
-        "package(s) not found in", repo, "repo:",
+        "package(s) with no resolvable version in", repo, "repo:",
         paste(dropped_names, collapse = ", "), "\n")
     keep_idx <- which(!is_missing)
     ass_repo00 <- vctrs::vec_slice(ass_repo00, keep_idx)
