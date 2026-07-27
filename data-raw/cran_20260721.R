@@ -121,6 +121,14 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label,
     pkg_names |>
     riskmetric::pkg_ref(source = paste("pkg", repo, "remote", sep = "_"))
 
+  # When `pkg_names` has length 1, riskmetric::pkg_ref() returns a single
+  # `pkg_ref` (an environment), not a `list_of_pkg_ref`. Normalize so the
+  # rest of the function can uniformly iterate over one-or-more refs.
+  if (!inherits(ass_repo00, "list_of_pkg_ref")) {
+    ass_repo00 <- vctrs::new_list_of(list(ass_repo00), ptype = list(),
+                                     class = "list_of_pkg_ref")
+  }
+
   # Split out `pkg_missing` refs (e.g. packages not found in the configured
   # Bioconductor sub-repos). riskmetric's `as_tibble.list_of_pkg_ref` calls
   #   vapply(x, function(xi) as.character(xi$version), character(1L))
