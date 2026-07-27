@@ -22,18 +22,13 @@ date_avail <- as.Date('2026-07-21')
 # Get daily downloads for all pkgs from Rstudio CRAN Mirror for the last year
 bioc_ver <- "3.22"
 options( repos = c(
-  CRAN = paste0("https://packagemanager.posit.co/cran/", date_avail)
-  # , CRAN = "https://cran.rstudio.com/src/contrib" # old way
-  # , BioC = paste0("https://packagemanager.posit.co/bioconductor/", date_avail) # doesn't work
-  # , BioC = "https://bioconductor.org/packages/3.17/bioc"
-  # NOTE: "<host>/packages/<ver>/bioc" is only the *software* subrepo (~2.3k
-  # pkgs). Bioconductor is split across four repos; include all of them so
-  # available.packages() returns the full ~3.7k pkgs.
-  , BioCsoft      = paste0("https://bioconductor.org/packages/", bioc_ver, "/bioc")
-  , BioCann       = paste0("https://bioconductor.org/packages/", bioc_ver, "/data/annotation")
+  # CRAN = paste0("https://packagemanager.posit.co/cran/", date_avail)
+  # , BioCsoft      = paste0("https://bioconductor.org/packages/", bioc_ver, "/bioc")
+   BioCann       = paste0("https://bioconductor.org/packages/", bioc_ver, "/data/annotation")
   , BioCexp       = paste0("https://bioconductor.org/packages/", bioc_ver, "/data/experiment")
   , BioCworkflows = paste0("https://bioconductor.org/packages/", bioc_ver, "/workflows")
 ))
+# options('repos')
 avail_pkgs <- available.packages() |> as.data.frame()
 table(avail_pkgs$Repository)
 cran_pkgs <- avail_pkgs[stringr::str_detect(avail_pkgs$Repository, "cran"), ]
@@ -123,9 +118,30 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
   st <- Sys.time()
   ass_repo00 <-
     pkg_names |>
-    riskmetric::pkg_ref(source = paste("pkg", repo, "remote", sep = "_")) #|>
-  # if (length(ass_repo00$version) == 0) ass_repo00$version = NA_character_
-  # ass_repo00$version <- list(NA_character_)
+    riskmetric::pkg_ref(source = paste("pkg", repo, "remote", sep = "_"))
+
+  # Drop any refs that resolved to `pkg_missing` (e.g. packages not found in
+  # the configured Bioconductor sub-repos). riskmetric's
+  # `as_tibble.list_of_pkg_ref` calls
+  #   vapply(x, function(xi) as.character(xi$version), character(1L))
+  # which errors with "values must be length 1, but FUN(X[[1]]) result is
+  # length 0" when a `pkg_missing` ref is present, since missing refs have no
+  # resolvable version. Filter them out (with a message) before assessing.
+  is_missing <- vapply(ass_repo00, function(xi) inherits(xi, "pkg_missing"),
+                       logical(1L))
+  if (any(is_missing)) {
+    missing_names <- vapply(ass_repo00[is_missing], "[[", character(1L), "name")
+    cat("\n--> Dropping", sum(is_missing),
+        "package(s) not found in", repo, "repo:",
+        paste(missing_names, collapse = ", "), "\n")
+    keep_idx <- which(!is_missing)
+    ass_repo00 <- vctrs::vec_slice(ass_repo00, keep_idx)
+  }
+  if (length(ass_repo00) == 0) {
+    cat("\n--> No resolvable packages in batch", label, "- skipping.\n")
+    return(invisible(NULL))
+  }
+
   assessed_repo0 <-
     ass_repo00 |>
     # as.data.frame()
@@ -191,18 +207,18 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
 # ---- CRAN Pkgs ----
 #
 
-cranny <- cran_pkgs$Package
-pkgs_ct <- length(cranny)
-bins <- ceiling(pkgs_ct / 8)
-# bins <- 3 # for testing / debugging
-incrmt_repo(cranny[1:bins], "cran", "01")
-incrmt_repo(cranny[(1*bins+1):(2*bins)], "cran", "02")
-incrmt_repo(cranny[(2*bins+1):(3*bins)], "cran", "03")
-incrmt_repo(cranny[(3*bins+1):(4*bins)], "cran", "04")
-incrmt_repo(cranny[(4*bins+1):(5*bins)], "cran", "05")
-incrmt_repo(cranny[(5*bins+1):(6*bins)], "cran", "06")
-incrmt_repo(cranny[(6*bins+1):(7*bins)], "cran", "07")
-incrmt_repo(cranny[(7*bins+1):pkgs_ct], "cran", "08")
+# cranny <- cran_pkgs$Package
+# pkgs_ct <- length(cranny)
+# bins <- ceiling(pkgs_ct / 8)
+# # bins <- 3 # for testing / debugging
+# incrmt_repo(cranny[1:bins], "cran", "01")
+# incrmt_repo(cranny[(1*bins+1):(2*bins)], "cran", "02")
+# incrmt_repo(cranny[(2*bins+1):(3*bins)], "cran", "03")
+# incrmt_repo(cranny[(3*bins+1):(4*bins)], "cran", "04")
+# incrmt_repo(cranny[(4*bins+1):(5*bins)], "cran", "05")
+# incrmt_repo(cranny[(5*bins+1):(6*bins)], "cran", "06")
+# incrmt_repo(cranny[(6*bins+1):(7*bins)], "cran", "07")
+# incrmt_repo(cranny[(7*bins+1):pkgs_ct], "cran", "08")
 
 
 
@@ -217,37 +233,54 @@ incrmt_repo(cranny[(7*bins+1):pkgs_ct], "cran", "08")
 
 bio <- bioc_pkgs$Package
 # Remove problem pkgs:
-bio <- bioc_pkgs$Package[!(bioc_pkgs$Package %in%
-                             c("biodbChebi", "BiRewire", # bundle 1
-                               "consensusDE", "DEP", # bundle 2
-                               "interactiveDisplay", "interactiveDisplayBase", "linkSet", # bundle 4
-                               "MetaNeighbor", "MineICA", "motifbreakR", "netZooR",# bundle 5
-                               "Organism.dplyr", "phenomis", "RcisTarget", # bundle 6
-                               "RgnTX", "RiboProfiling", "rRDP", # bundle 7
-                               "Streamer", "Ularcirc"  # bundle 8
-                               )
-                           )]
+# bio <- bioc_pkgs$Package[!(bioc_pkgs$Package %in%
+#                              c("biodbChebi", "BiRewire", # bundle 1
+#                                "consensusDE", "DEP", # bundle 2
+#                                "interactiveDisplay", "interactiveDisplayBase", "linkSet", # bundle 4
+#                                "MetaNeighbor", "MineICA", "motifbreakR", "netZooR",# bundle 5
+#                                "Organism.dplyr", "phenomis", "RcisTarget", # bundle 6
+#                                "RgnTX", "RiboProfiling", "rRDP", # bundle 7
+#                                "Streamer", "Ularcirc"  # bundle 8
+#                                )
+#                            )]
+# bio <- bioc_pkgs$Package[!(bioc_pkgs$Package %in%
+#                              c("adme16cod" #"BiRewire", # bundle 1
+                             #   "consensusDE", "DEP", # bundle 2
+                             #   "interactiveDisplay", "interactiveDisplayBase", # bundle 3
+                             # )
+# )]
+
+
+# ref_2 <- riskmetric::pkg_ref("adme16cod", source = "pkg_bioc_remote")
+
 pkgs_ct <- length(bio)
-bins <- ceiling(pkgs_ct / 8)
+bins <- ceiling(pkgs_ct / 3)
 
 # Find the bad eggs
-# bin <- 205
+# bin <- 1
 # bundle <- 1
 # bio_run <- bio[((bundle-1)*bins+1):(bundle*bins)]
 # bio_run[bin]
 # bin <- 220 # for testing / debugging
 # bio[bin] # was a problem child
-# incrmt_repo(bio[bin], "bioc", "01")
+# # incrmt_repo(bio[bin], "bioc", "01")
 
 # run for real
-incrmt_repo(bio[1:bins], "bioc", "01")
-incrmt_repo(bio[(1*bins+1):(2*bins)], "bioc", "02")
-incrmt_repo(bio[(2*bins+1):(3*bins)], "bioc", "03")
-incrmt_repo(bio[(3*bins+1):(4*bins)], "bioc", "04")
-incrmt_repo(bio[(4*bins+1):(5*bins)], "bioc", "05")
-incrmt_repo(bio[(5*bins+1):(6*bins)], "bioc", "06")
-incrmt_repo(bio[(6*bins+1):(7*bins)], "bioc", "07")
-incrmt_repo(bio[(7*bins+1):pkgs_ct], "bioc", "08")
+# incrmt_repo(bio[1:bins], "bioc", "01")
+# incrmt_repo(bio[(1*bins+1):(2*bins)], "bioc", "02")
+# incrmt_repo(bio[(2*bins+1):(3*bins)], "bioc", "03")
+# incrmt_repo(bio[(3*bins+1):(4*bins)], "bioc", "04")
+# incrmt_repo(bio[(4*bins+1):(5*bins)], "bioc", "05")
+# incrmt_repo(bio[(5*bins+1):(6*bins)], "bioc", "06")
+# incrmt_repo(bio[(6*bins+1):(7*bins)], "bioc", "07")
+# incrmt_repo(bio[(7*bins+1):pkgs_ct], "bioc", "08")
+
+
+incrmt_repo(bio[1:bins], "bioc", "09") # test
+
+incrmt_repo(bio[1:bins], "bioc", "09")
+incrmt_repo(bio[(1*bins+1):(2*bins)], "bioc", "10")
+incrmt_repo(bio[(2*bins+1):(3*bins)], "bioc", "11")
 
 # Comment out everything below here if you just want to run the incremental &
 # source as a workbench job
