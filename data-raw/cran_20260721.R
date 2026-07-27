@@ -318,8 +318,15 @@ bins <- ceiling(pkgs_ct / 3)
 # incrmt_repo(bio[(7*bins+1):pkgs_ct], "bioc", "08")
 
 
-incrmt_repo(bio[1], "bioc", "09") # test
-
+# incrmt_repo(bio[1], "bioc", "12") # test
+# Note: ran these separately to accomodate these BioC repo URLs after the fact:
+#   BioCann       = paste0("https://bioconductor.org/packages/", bioc_ver, "/data/annotation")
+# , BioCexp       = paste0("https://bioconductor.org/packages/", bioc_ver, "/data/experiment")
+# , BioCworkflows = paste0("https://bioconductor.org/packages/", bioc_ver, "/workflows")
+#
+# Also, added an argument 'keep_missing' = TRUE by default that tells R
+# whether you want to hang onto those missing ref pkgs or to just drop them
+# from the RDS file. Note: If dropped, then val.pipeline may say they are missing.
 incrmt_repo(bio[1:bins], "bioc", "09")
 incrmt_repo(bio[(1*bins+1):(2*bins)], "bioc", "10")
 incrmt_repo(bio[(2*bins+1):(3*bins)], "bioc", "11")
