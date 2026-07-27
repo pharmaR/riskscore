@@ -164,8 +164,9 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label,
   }
 
   # If every ref in this batch is pkg_missing, skip the assess/score pipeline
-  # and just emit a bundle of flagged rows. Otherwise assess/score normally
-  # and append the missing rows afterwards.
+  # entirely (there's nothing riskmetric can process). Missing packages will
+  # be re-attached as flagged rows in `repo_united()` if `keep_missing`
+  # requested it.
   all_missing <- length(ass_repo00) == 0
 
   if (!all_missing) {
@@ -188,15 +189,9 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label,
     cat("\n--> batch", label,"scored\n")
   } else {
     cat("\n--> All packages in batch", label, "were pkg_missing;",
-        "emitting flagged-only bundle.\n")
-    # Match the list-column shape produced by strip_recording() so the empty
-    # skeleton binds cleanly with the missing rows (which use list-columns
-    # for package/version to match batches that DID run strip_recording).
-    assessed_repo <- tibble::tibble(package = list(),
-                                    version = list())
-    scored_repo   <- tibble::tibble(package = character(0),
-                                    version = character(0),
-                                    pkg_score = numeric(0))
+        "skipping assess/score.\n")
+    assessed_repo <- NULL
+    scored_repo   <- NULL
   }
 
   end <- Sys.time()
@@ -206,92 +201,45 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label,
   #
   # ---- Prepare the datasets for saving ----
   #
-  # Save the assessed and scored datasets
-  repo_assessed_bundle <- assessed_repo %>%
-    dplyr::mutate(
-      pkg_missing = FALSE,
-      R_version = getRversion(),
-      riskmetric_run_date = date_avail,
-      riskmetric_version = packageVersion("riskmetric")
-    ) %>%
-    dplyr::select( package, version, pkg_missing, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
+  # Bundle files hold ONLY resolvable packages, with the schema riskmetric
+  # produces. Missing packages (if any and if keep_missing = TRUE) are saved
+  # to a companion `_missing_<label>.rds` file as a plain character vector.
+  # `repo_united()` later appends flagged rows for these missing packages to
+  # the fully-combined bundle, where all column types (`pkg_score` S3 class,
+  # list-columns from strip_recording(), etc.) are already established —
+  # sidestepping the ptype-fallback issues that occur when appending inside
+  # each batch.
+  if (!all_missing) {
+    repo_assessed_bundle <- assessed_repo %>%
+      dplyr::mutate(
+        R_version = getRversion(),
+        riskmetric_run_date = date_avail,
+        riskmetric_version = packageVersion("riskmetric")
+      ) %>%
+      dplyr::select( package, version, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
+    saveRDS(repo_assessed_bundle,
+            file.path(folder_path, paste0(repo, "_assessed_bundle_",label,".rds")))
 
-  # Append flagged rows for pkg_missing packages so they remain in the output.
-  if (length(missing_names) > 0) {
-    # `strip_recording()` turns EVERY column of the assessed bundle into a
-    # list-column (including `package` and `version`). Match that shape here
-    # so bundles from batches with and without missing rows can be combined
-    # by `repo_united()` -> `dplyr::bind_rows()`.
-    missing_assessed <- tibble::tibble(
-      package = lapply(missing_names, identity),
-      version = replicate(length(missing_names), NA_character_,
-                          simplify = FALSE),
-      pkg_missing = TRUE,
-      R_version = getRversion(),
-      riskmetric_run_date = date_avail,
-      riskmetric_version = packageVersion("riskmetric")
-    )
-    repo_assessed_bundle <- dplyr::bind_rows(repo_assessed_bundle,
-                                             missing_assessed)
-  }
-  # Doesn't work
-  # repo_assessed_bundle |>
-  #   arrow::as_arrow_table() |>
-  #   arrow::write_parquet(
-  #     file.path(folder_path, paste0(repo, "_assessed_bundle_", label, ".parquet")))
-  saveRDS(repo_assessed_bundle,
-          file.path(folder_path, paste0(repo, "_assessed_bundle_",label,".rds")))
-
-  repo_scored_bundle <- scored_repo %>%
-    dplyr::mutate(
-      pkg_missing = FALSE,
-      R_version = getRversion(),
-      riskmetric_run_date = date_avail,
-      riskmetric_version = packageVersion("riskmetric")
-    ) %>%
-    dplyr::arrange(pkg_score) %>%
-    dplyr::select(package, version, pkg_score, pkg_missing, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
-
-  # Append flagged rows for pkg_missing packages so they remain in the output.
-  # pkg_score is NA for these (they were never assessed / scored). Match the
-  # class/attributes of the existing `pkg_score` column (riskmetric attaches
-  # a "pkg_score" S3 class to that column) so bind_rows across batches in
-  # repo_united() doesn't hit vctrs common_class_fallback errors.
-  if (length(missing_names) > 0) {
-    na_scores <- rep(NA_real_, length(missing_names))
-    if (!all_missing && nrow(repo_scored_bundle) > 0) {
-      # Prototype-slice preserves class + attributes without carrying values.
-      proto <- vctrs::vec_slice(repo_scored_bundle$pkg_score, integer(0))
-      na_scores <- tryCatch(
-        vctrs::vec_c(proto, na_scores),
-        error = function(e) {
-          # Fall back: copy attributes/class manually.
-          attrs <- attributes(repo_scored_bundle$pkg_score)
-          attrs$names <- NULL
-          attributes(na_scores) <- attrs
-          na_scores
-        }
-      )
-    }
-    missing_scored <- tibble::tibble(
-      package = missing_names,
-      version = NA_character_,
-      pkg_score = na_scores,
-      pkg_missing = TRUE,
-      R_version = getRversion(),
-      riskmetric_run_date = date_avail,
-      riskmetric_version = packageVersion("riskmetric")
-    )
-    repo_scored_bundle <- dplyr::bind_rows(repo_scored_bundle,
-                                           missing_scored)
+    repo_scored_bundle <- scored_repo %>%
+      dplyr::mutate(
+        R_version = getRversion(),
+        riskmetric_run_date = date_avail,
+        riskmetric_version = packageVersion("riskmetric")
+      ) %>%
+      dplyr::arrange(pkg_score) %>%
+      dplyr::select(package, version, pkg_score, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
+    saveRDS(repo_scored_bundle,
+            file.path(folder_path, paste0(repo, "_scored_bundle_",label,".rds")))
   }
 
-  # Doesn't work:
-  # arrow::write_parquet(
-  #   repo_scored_bundle,
-  #   file.path(folder_path, paste0(repo, "_scored_bundle_", label, ".parquet")))
-  saveRDS(repo_scored_bundle, #paste0("data-raw/cran20250812/cran_scored_bundle_",label,".rds"))
-          file.path(folder_path, paste0(repo, "_scored_bundle_",label,".rds")))
+  # Persist the list of missing package names for this batch so repo_united()
+  # can pick them up. Only when keep_missing = TRUE.
+  if (isTRUE(keep_missing) && length(missing_names) > 0) {
+    saveRDS(missing_names,
+            file.path(folder_path,
+                      paste0(repo, "_missing_", label, ".rds")))
+  }
+
   cat("\n-->", repo,"batch '", label, "' saved.\n\n")
 }
 
@@ -435,8 +383,17 @@ harmonize_bundle_attrs <- function(bundles) {
 }
 
 repo_united <- function(repo){
-  file_ct <- list.files(folder_path, pattern = paste0(repo, "_assessed_bundle_")) |> length()
-  labs <- ifelse(1:file_ct < 10, paste0("0", 1:file_ct), paste(1:file_ct))
+  # Determine batch labels from the assessed bundle filenames rather than
+  # assuming 01..N are all present — a batch where every package was
+  # pkg_missing produces no bundle file, so labels can have gaps.
+  assessed_files <- list.files(
+    folder_path,
+    pattern = paste0("^", repo, "_assessed_bundle_.*\\.rds$"),
+    full.names = FALSE
+  )
+  labs <- sub(paste0("^", repo, "_assessed_bundle_(.*)\\.rds$"),
+              "\\1", assessed_files)
+  labs <- sort(labs)
   # .x <- "01" # rm(.x)
   repo_assessed_latest <- purrr::map(labs, ~
        folder_path |>
@@ -461,7 +418,80 @@ repo_united <- function(repo){
       dplyr::bind_rows() |>
     dplyr::mutate(repo_src = repo)
 
+  # Attach pkg_missing = FALSE to every row that came from a real bundle;
+  # append flagged rows for any packages saved to `<repo>_missing_*.rds`
+  # by incrmt_repo() (only present when keep_missing = TRUE was used).
+  # Building the flagged rows here — against the fully-combined bundle —
+  # lets us use vctrs::vec_init() with each column's real prototype, so
+  # class-decorated columns like `pkg_score` don't get downgraded.
+  repo_assessed_latest <- append_missing_bundle_rows(
+    repo_assessed_latest, repo, "assessed"
+  )
+  repo_scored_latest <- append_missing_bundle_rows(
+    repo_scored_latest, repo, "scored"
+  )
+
   list(assessed = repo_assessed_latest, scored = repo_scored_latest)
+}
+
+# Load `<repo>_missing_<label>.rds` files (character vectors of package
+# names) that incrmt_repo() saved for each batch with unresolvable
+# packages, and append one flagged row per name to `bundle`. `bundle` is
+# assumed to be the fully-combined output of all resolvable batches, so
+# every column already has its final S3 class / attributes and vec_init()
+# will preserve them on the NA-filled rows.
+append_missing_bundle_rows <- function(bundle, repo, kind) {
+  # Always emit the pkg_missing flag column; FALSE for existing rows.
+  if (!"pkg_missing" %in% names(bundle)) {
+    bundle <- dplyr::mutate(bundle, pkg_missing = FALSE)
+  }
+  miss_files <- list.files(folder_path,
+                           pattern = paste0("^", repo, "_missing_.*\\.rds$"),
+                           full.names = TRUE)
+  if (length(miss_files) == 0L) return(bundle)
+  missing_names <- unique(unlist(lapply(miss_files, readRDS),
+                                 use.names = FALSE))
+  if (length(missing_names) == 0L) return(bundle)
+
+  n_miss <- length(missing_names)
+  # Build a row-set with the same schema as `bundle` using each column's
+  # prototype so classes/attributes are preserved.
+  missing_rows <- lapply(names(bundle), function(nm) {
+    vctrs::vec_init(bundle[[nm]], n = n_miss)
+  })
+  names(missing_rows) <- names(bundle)
+  missing_rows <- tibble::as_tibble(missing_rows)
+
+  # Overwrite identifier / metadata columns with real values.
+  if (inherits(bundle$package, "list")) {
+    missing_rows$package <- lapply(missing_names, identity)
+  } else {
+    missing_rows$package <- missing_names
+  }
+  if ("version" %in% names(missing_rows)) {
+    if (inherits(bundle$version, "list")) {
+      missing_rows$version <- replicate(n_miss, NA_character_,
+                                        simplify = FALSE)
+    } else {
+      missing_rows$version <- NA_character_
+    }
+  }
+  missing_rows$pkg_missing <- TRUE
+  if ("R_version" %in% names(missing_rows)) {
+    missing_rows$R_version <- getRversion()
+  }
+  if ("riskmetric_run_date" %in% names(missing_rows)) {
+    missing_rows$riskmetric_run_date <- date_avail
+  }
+  if ("riskmetric_version" %in% names(missing_rows)) {
+    missing_rows$riskmetric_version <- packageVersion("riskmetric")
+  }
+  if ("repo_src" %in% names(missing_rows)) {
+    missing_rows$repo_src <- repo
+  }
+  cat("\n--> Appending", n_miss, "pkg_missing row(s) to", repo,
+      kind, "bundle.\n")
+  vctrs::vec_rbind(bundle, missing_rows)
 }
 cran_ <- repo_united(repo = "cran")
 bioc_ <- repo_united(repo = "bioc")
