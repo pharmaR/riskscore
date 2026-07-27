@@ -105,7 +105,8 @@ folder_nm <- paste0("repos", date_lab)
 folder_path <- file.path("data-raw", folder_nm)
 # if(!dir.exists(folder_path)) dir.create(folder_path)
 
-incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
+incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label,
+                        keep_missing = TRUE) {
   # bin_num <- 66 # for testing / debugging
   # pkg_names <- bio[bin_num] # 'AneuFinder' was a problem child?
   # repo = c('bioc')
@@ -125,19 +126,22 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
   #   vapply(x, function(xi) as.character(xi$version), character(1L))
   # which errors with "values must be length 1, but FUN(X[[1]]) result is
   # length 0" when a `pkg_missing` ref is present, since missing refs have no
-  # resolvable version. We remove them before assess/score, then append them
-  # back to the final bundles as flagged rows so the packages are still
-  # represented in the output.
+  # resolvable version. We always remove them before assess/score; whether
+  # they are re-added as flagged rows in the final bundles is controlled by
+  # `keep_missing` (TRUE = retain as flagged rows, FALSE = drop entirely).
   is_missing <- vapply(ass_repo00, function(xi) inherits(xi, "pkg_missing"),
                        logical(1L))
   missing_names <- character(0)
   if (any(is_missing)) {
-    missing_names <- vapply(ass_repo00[is_missing], "[[", character(1L), "name")
-    cat("\n--> Flagging", sum(is_missing),
-        "package(s) not found in", repo, "repo as pkg_missing:",
-        paste(missing_names, collapse = ", "), "\n")
+    dropped_names <- vapply(ass_repo00[is_missing], "[[",
+                            character(1L), "name")
+    action <- if (isTRUE(keep_missing)) "Flagging" else "Dropping"
+    cat("\n-->", action, sum(is_missing),
+        "package(s) not found in", repo, "repo:",
+        paste(dropped_names, collapse = ", "), "\n")
     keep_idx <- which(!is_missing)
     ass_repo00 <- vctrs::vec_slice(ass_repo00, keep_idx)
+    if (isTRUE(keep_missing)) missing_names <- dropped_names
   }
 
   # If every ref in this batch is pkg_missing, skip the assess/score pipeline
