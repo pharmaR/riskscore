@@ -120,45 +120,58 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
     pkg_names |>
     riskmetric::pkg_ref(source = paste("pkg", repo, "remote", sep = "_"))
 
-  # Drop any refs that resolved to `pkg_missing` (e.g. packages not found in
-  # the configured Bioconductor sub-repos). riskmetric's
-  # `as_tibble.list_of_pkg_ref` calls
+  # Split out `pkg_missing` refs (e.g. packages not found in the configured
+  # Bioconductor sub-repos). riskmetric's `as_tibble.list_of_pkg_ref` calls
   #   vapply(x, function(xi) as.character(xi$version), character(1L))
   # which errors with "values must be length 1, but FUN(X[[1]]) result is
   # length 0" when a `pkg_missing` ref is present, since missing refs have no
-  # resolvable version. Filter them out (with a message) before assessing.
+  # resolvable version. We remove them before assess/score, then append them
+  # back to the final bundles as flagged rows so the packages are still
+  # represented in the output.
   is_missing <- vapply(ass_repo00, function(xi) inherits(xi, "pkg_missing"),
                        logical(1L))
+  missing_names <- character(0)
   if (any(is_missing)) {
     missing_names <- vapply(ass_repo00[is_missing], "[[", character(1L), "name")
-    cat("\n--> Dropping", sum(is_missing),
-        "package(s) not found in", repo, "repo:",
+    cat("\n--> Flagging", sum(is_missing),
+        "package(s) not found in", repo, "repo as pkg_missing:",
         paste(missing_names, collapse = ", "), "\n")
     keep_idx <- which(!is_missing)
     ass_repo00 <- vctrs::vec_slice(ass_repo00, keep_idx)
   }
-  if (length(ass_repo00) == 0) {
-    cat("\n--> No resolvable packages in batch", label, "- skipping.\n")
-    return(invisible(NULL))
+
+  # If every ref in this batch is pkg_missing, skip the assess/score pipeline
+  # and just emit a bundle of flagged rows. Otherwise assess/score normally
+  # and append the missing rows afterwards.
+  all_missing <- length(ass_repo00) == 0
+
+  if (!all_missing) {
+    assessed_repo0 <-
+      ass_repo00 |>
+      # as.data.frame()
+      dplyr::as_tibble() |>
+      riskmetric::pkg_assess()
+
+    assessed_repo <- assessed_repo0 |>
+      # remove any 'pkg_metric_errors'
+      dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
+      strip_recording() # strip .recording attribute
+    # object.size(assessed_repo0)
+    # object.size(assessed_repo)
+    cat("\n--> batch", label,"Assessed.\n")
+
+    scored_repo <- assessed_repo0 %>%
+      riskmetric::pkg_score(weights = metric_weights)
+    cat("\n--> batch", label,"scored\n")
+  } else {
+    cat("\n--> All packages in batch", label, "were pkg_missing;",
+        "emitting flagged-only bundle.\n")
+    assessed_repo <- tibble::tibble(package = character(0),
+                                    version = character(0))
+    scored_repo   <- tibble::tibble(package = character(0),
+                                    version = character(0),
+                                    pkg_score = numeric(0))
   }
-
-  assessed_repo0 <-
-    ass_repo00 |>
-    # as.data.frame()
-    dplyr::as_tibble() |>
-    riskmetric::pkg_assess()
-
-  assessed_repo <- assessed_repo0 |>
-    # remove any 'pkg_metric_errors'
-    dplyr::mutate(dplyr::across(c(has_news), ~ if("pkg_metric_error" %in% class(.x[[1]])) "pkg_metric_error" else .x[[1]])) |>
-    strip_recording() # strip .recording attribute
-  # object.size(assessed_repo0)
-  # object.size(assessed_repo)
-  cat("\n--> batch", label,"Assessed.\n")
-
-  scored_repo <- assessed_repo0 %>%
-    riskmetric::pkg_score(weights = metric_weights)
-  cat("\n--> batch", label,"scored\n")
 
   end <- Sys.time()
   # Note: this took a well equipped laptop about 10 hours
@@ -170,11 +183,26 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
   # Save the assessed and scored datasets
   repo_assessed_bundle <- assessed_repo %>%
     dplyr::mutate(
+      pkg_missing = FALSE,
       R_version = getRversion(),
       riskmetric_run_date = date_avail,
       riskmetric_version = packageVersion("riskmetric")
     ) %>%
-    dplyr::select( package, version, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
+    dplyr::select( package, version, pkg_missing, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
+
+  # Append flagged rows for pkg_missing packages so they remain in the output.
+  if (length(missing_names) > 0) {
+    missing_assessed <- tibble::tibble(
+      package = missing_names,
+      version = NA_character_,
+      pkg_missing = TRUE,
+      R_version = getRversion(),
+      riskmetric_run_date = date_avail,
+      riskmetric_version = packageVersion("riskmetric")
+    )
+    repo_assessed_bundle <- dplyr::bind_rows(repo_assessed_bundle,
+                                             missing_assessed)
+  }
   # Doesn't work
   # repo_assessed_bundle |>
   #   arrow::as_arrow_table() |>
@@ -185,12 +213,29 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label) {
 
   repo_scored_bundle <- scored_repo %>%
     dplyr::mutate(
+      pkg_missing = FALSE,
       R_version = getRversion(),
       riskmetric_run_date = date_avail,
       riskmetric_version = packageVersion("riskmetric")
     ) %>%
     dplyr::arrange(pkg_score) %>%
-    dplyr::select(package, version, pkg_score, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
+    dplyr::select(package, version, pkg_score, pkg_missing, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
+
+  # Append flagged rows for pkg_missing packages so they remain in the output.
+  # pkg_score is NA for these (they were never assessed / scored).
+  if (length(missing_names) > 0) {
+    missing_scored <- tibble::tibble(
+      package = missing_names,
+      version = NA_character_,
+      pkg_score = NA_real_,
+      pkg_missing = TRUE,
+      R_version = getRversion(),
+      riskmetric_run_date = date_avail,
+      riskmetric_version = packageVersion("riskmetric")
+    )
+    repo_scored_bundle <- dplyr::bind_rows(repo_scored_bundle,
+                                           missing_scored)
+  }
 
   # Doesn't work:
   # arrow::write_parquet(
