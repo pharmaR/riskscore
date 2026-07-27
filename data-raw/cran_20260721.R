@@ -253,12 +253,30 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label,
     dplyr::select(package, version, pkg_score, pkg_missing, everything())#, -pkg_ref) # ran w/o pkg_ref, but should keep it next time
 
   # Append flagged rows for pkg_missing packages so they remain in the output.
-  # pkg_score is NA for these (they were never assessed / scored).
+  # pkg_score is NA for these (they were never assessed / scored). Match the
+  # class/attributes of the existing `pkg_score` column (riskmetric attaches
+  # a "pkg_score" S3 class to that column) so bind_rows across batches in
+  # repo_united() doesn't hit vctrs common_class_fallback errors.
   if (length(missing_names) > 0) {
+    na_scores <- rep(NA_real_, length(missing_names))
+    if (!all_missing && nrow(repo_scored_bundle) > 0) {
+      # Prototype-slice preserves class + attributes without carrying values.
+      proto <- vctrs::vec_slice(repo_scored_bundle$pkg_score, integer(0))
+      na_scores <- tryCatch(
+        vctrs::vec_c(proto, na_scores),
+        error = function(e) {
+          # Fall back: copy attributes/class manually.
+          attrs <- attributes(repo_scored_bundle$pkg_score)
+          attrs$names <- NULL
+          attributes(na_scores) <- attrs
+          na_scores
+        }
+      )
+    }
     missing_scored <- tibble::tibble(
       package = missing_names,
       version = NA_character_,
-      pkg_score = NA_real_,
+      pkg_score = na_scores,
       pkg_missing = TRUE,
       R_version = getRversion(),
       riskmetric_run_date = date_avail,
@@ -418,7 +436,7 @@ harmonize_bundle_attrs <- function(bundles) {
 
 repo_united <- function(repo){
   file_ct <- list.files(folder_path, pattern = paste0(repo, "_assessed_bundle_")) |> length()
-  labs <- paste0("0", 1:file_ct)
+  labs <- ifelse(1:file_ct < 10, paste0("0", 1:file_ct), paste(1:file_ct))
   # .x <- "01" # rm(.x)
   repo_assessed_latest <- purrr::map(labs, ~
        folder_path |>
