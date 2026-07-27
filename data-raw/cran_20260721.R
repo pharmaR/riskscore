@@ -189,8 +189,11 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label,
   } else {
     cat("\n--> All packages in batch", label, "were pkg_missing;",
         "emitting flagged-only bundle.\n")
-    assessed_repo <- tibble::tibble(package = character(0),
-                                    version = character(0))
+    # Match the list-column shape produced by strip_recording() so the empty
+    # skeleton binds cleanly with the missing rows (which use list-columns
+    # for package/version to match batches that DID run strip_recording).
+    assessed_repo <- tibble::tibble(package = list(),
+                                    version = list())
     scored_repo   <- tibble::tibble(package = character(0),
                                     version = character(0),
                                     pkg_score = numeric(0))
@@ -215,9 +218,14 @@ incrmt_repo <- function(pkg_names, repo = c('cran', 'bioc')[1], label,
 
   # Append flagged rows for pkg_missing packages so they remain in the output.
   if (length(missing_names) > 0) {
+    # `strip_recording()` turns EVERY column of the assessed bundle into a
+    # list-column (including `package` and `version`). Match that shape here
+    # so bundles from batches with and without missing rows can be combined
+    # by `repo_united()` -> `dplyr::bind_rows()`.
     missing_assessed <- tibble::tibble(
-      package = missing_names,
-      version = NA_character_,
+      package = lapply(missing_names, identity),
+      version = replicate(length(missing_names), NA_character_,
+                          simplify = FALSE),
       pkg_missing = TRUE,
       R_version = getRversion(),
       riskmetric_run_date = date_avail,
@@ -344,7 +352,7 @@ bins <- ceiling(pkgs_ct / 3)
 # incrmt_repo(bio[(7*bins+1):pkgs_ct], "bioc", "08")
 
 
-incrmt_repo(bio[1:bins], "bioc", "09") # test
+incrmt_repo(bio[1], "bioc", "09") # test
 
 incrmt_repo(bio[1:bins], "bioc", "09")
 incrmt_repo(bio[(1*bins+1):(2*bins)], "bioc", "10")
