@@ -1,4 +1,11 @@
+# riskscore 0.1.1
+
+- Build latest assessments and scores for cran & bioc as of 2026-08-15
+
 # riskscore 0.1.2
+
+- Fixed some bugs with the way that BioConductor Packages were being assessed
+and scored (all pkgs not from BioSoft were being omitted). 
 
 # riskscore 0.1.1
 
