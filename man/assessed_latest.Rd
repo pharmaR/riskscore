@@ -24,7 +24,7 @@ assessed_latest
 A data.frame
 }
 \description{
-A data.frame containing all of CRAN & BioConductor (v3.21) was assessed using
-riskmetric v0.2.5 on 2025-10-01 & R v4.5.1.
+A data.frame containing all of CRAN & BioConductor (v3.22) was assessed using
+riskmetric v0.2.6 on 2026-02-24 & R v4.5.1.
 }
 \keyword{datasets}
